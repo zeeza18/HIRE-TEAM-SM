@@ -1,0 +1,7 @@
+{
+  "pythonVersion": "3.10",
+  "include": ["."],
+  "exclude": ["data", "logs"],
+  "reportMissingImports": "none",
+  "reportMissingModuleSource": "none"
+}
