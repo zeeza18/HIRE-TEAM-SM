@@ -20,7 +20,11 @@ from scraper.utils import SESSION_STATE_FILE, DATA_DIR, get_logger, save_json
 
 log = get_logger("conversations_scraper")
 
-MESSAGES_URL = "https://employers.indeed.com/messages?threadType=resumeContact"
+JOBS_URL = (
+    "https://employers.indeed.com/jobs"
+    "?status=open%2Cpaused&claimed=false&createdOnIndeed=true"
+    "&tab=0&sortDirection=DESC&sortField=datePostedOnIndeed"
+)
 CONVERSATIONS_DIR = DATA_DIR / "conversations"
 
 _UA = (
@@ -162,9 +166,18 @@ def _dismiss_overlays(page):
 
 
 def _open_messages_page(page):
-    page.goto(MESSAGES_URL, wait_until="domcontentloaded", timeout=30_000)
-    _pause(2.5, 4.0)
+    # Navigate from jobs page then click Messages icon — matches the working codegen flow
+    page.goto(JOBS_URL, wait_until="domcontentloaded", timeout=30_000)
+    _pause(2.0, 3.5)
+
+    # Click the Messages nav link
+    page.get_by_test_id("messages").click()
+    _pause(1.5, 2.5)
+
+    # Dismiss "Messaging policy and terms" modal
     _dismiss_overlays(page)
+
+    # Ensure Inbox tab is active
     try:
         inbox = page.get_by_role("tab", name="Inbox")
         if inbox.count():
@@ -172,6 +185,7 @@ def _open_messages_page(page):
             _pause(1.0, 1.5)
     except Exception:
         pass
+
     _dismiss_overlays(page)   # second pass — some popups appear after tab click
 
 
@@ -302,7 +316,7 @@ def send_reply(thread_id: str, message: str) -> dict:
         _open_messages_page(page)
 
         try:
-            page.wait_for_selector("#indeed-messaging--conversation-list-div", timeout=15_000)
+            page.wait_for_selector('[role="option"]', timeout=15_000)
         except Exception:
             browser.close()
             return {"ok": False, "error": "Conversation list not found"}
