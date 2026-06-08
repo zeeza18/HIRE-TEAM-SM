@@ -239,10 +239,17 @@ def scrape(max_threads: int = 50) -> list:
 
         for i in range(count):
             try:
-                _pause(0.4, 0.8)   # let list settle after previous click
-                # Re-query each time — the list re-renders after every click
+                _pause(0.8, 1.4)   # let list settle after previous click
+
+                # Wait until the list has re-rendered enough items for this index
+                for _ in range(10):
+                    if page.get_by_role("option").count() > i:
+                        break
+                    _pause(0.5, 0.8)
+
                 opt = page.get_by_role("option").nth(i)
-                option_text = opt.inner_text(timeout=8_000)
+                opt.scroll_into_view_if_needed()
+                option_text = opt.inner_text(timeout=10_000)
                 log.info(f"[{i+1}/{count}] {option_text[:80].strip()}")
 
                 opt.click()
