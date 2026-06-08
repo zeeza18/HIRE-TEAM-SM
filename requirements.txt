@@ -1,3 +1,6 @@
+# --- environment ---
+python-dotenv>=1.0.0             # load .env file automatically
+
 # --- scraper ---
 playwright==1.58.0          # browser automation; after install run: playwright install chromium
 pdfplumber>=0.11.0          # PDF text extraction fallback when inline viewer returns nothing

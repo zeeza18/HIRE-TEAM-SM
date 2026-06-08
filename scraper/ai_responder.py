@@ -9,15 +9,16 @@ import json
 import os
 from pathlib import Path
 
-ROOT         = Path(__file__).parent.parent
-SETTINGS_FILE = ROOT / "config" / "settings.json"
+# utils loads .env automatically when imported
+from scraper.utils import CONFIG_DIR
 
 _MODEL = "llama-3.3-70b-versatile"
+_SETTINGS_FILE = CONFIG_DIR / "settings.json"
 
 
 def _load_settings() -> dict:
-    if SETTINGS_FILE.exists():
-        return json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
+    if _SETTINGS_FILE.exists():
+        return json.loads(_SETTINGS_FILE.read_text(encoding="utf-8"))
     return {}
 
 
@@ -29,12 +30,10 @@ def generate_reply(thread: dict) -> str:
       messages: list of {direction, content, timestamp, date_group}
     Returns the suggested reply as a plain string.
     """
-    settings = _load_settings()
-    api_key  = settings.get("groq_api_key") or os.environ.get("GROQ_API_KEY", "")
+    api_key = os.environ.get("GROQ_API_KEY", "").strip()
     if not api_key:
         raise ValueError(
-            "Groq API key not set. Add 'groq_api_key' to config/settings.json "
-            "or set the GROQ_API_KEY environment variable."
+            "GROQ_API_KEY not set. Add it to your .env file."
         )
 
     from groq import Groq

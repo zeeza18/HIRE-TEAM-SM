@@ -1,12 +1,17 @@
 """Shared utilities: paths, JSON helpers, logging."""
 
-from pathlib import Path
 import json
 import logging
+import os
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
+
+from dotenv import load_dotenv
 
 ROOT = Path(__file__).parent.parent
+load_dotenv(ROOT / ".env")          # load .env once when utils is imported
+
 CONFIG_DIR = ROOT / "config"
 DATA_DIR = ROOT / "data"
 LOGS_DIR = ROOT / "logs"
@@ -63,11 +68,24 @@ def save_json(path: Path, data):
 
 
 def load_credentials() -> dict:
-    creds = load_json(CREDENTIALS_FILE)
+    # Start with the JSON file (may not exist on fresh clones)
+    creds = load_json(CREDENTIALS_FILE) or {}
+
+    # Overlay env vars — these always win over the JSON values
+    env_map = {
+        "GROQ_API_KEY":     "groq_api_key",
+        "ANTHROPIC_API_KEY": "anthropic_api_key",
+        "INDEED_EMAIL":     "indeed_email",
+    }
+    for env_var, key in env_map.items():
+        val = os.environ.get(env_var, "").strip()
+        if val:
+            creds[key] = val
+
     if not creds:
         raise FileNotFoundError(
-            f"Credentials file not found at {CREDENTIALS_FILE}\n"
-            f"Copy config/credentials.template.json → config/credentials.json and fill in your details."
+            "No credentials found. Create a .env file (copy .env.example) "
+            "or copy config/credentials.template.json → config/credentials.json."
         )
     return creds
 
