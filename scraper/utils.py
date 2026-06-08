@@ -17,6 +17,7 @@ CANDIDATES_DIR = DATA_DIR / "candidates"
 CANDIDATES_INDEX_FILE = DATA_DIR / "candidates_index.json"
 LAST_RUN_FILE = DATA_DIR / "last_run.json"
 AUDIT_LOG_FILE = DATA_DIR / "audit_log.json"
+STATUS_COUNTS_FILE = DATA_DIR / "job_status_counts.json"
 
 JOBS_URL = (
     "https://employers.indeed.com/jobs"
@@ -86,6 +87,14 @@ def load_candidates_index() -> list:
 
 def save_candidates_index(data: list):
     save_json(CANDIDATES_INDEX_FILE, data)
+
+
+def load_status_counts() -> dict:
+    return load_json(STATUS_COUNTS_FILE, default={}) or {}
+
+
+def save_status_counts(data: dict):
+    save_json(STATUS_COUNTS_FILE, data)
 
 
 def append_audit_log(entry: dict):

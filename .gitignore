@@ -222,3 +222,10 @@ config/credentials.json
 config/session_state.json
 data/
 logs/
+
+# Virtual environment (hire/)
+hire/
+
+# Root-level screenshots / debug images
+image.png
+*.png

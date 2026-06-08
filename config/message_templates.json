@@ -1,0 +1,51 @@
+{
+  "interview_invite": [
+    {
+      "id": "invite_warm",
+      "label": "Warm Invite",
+      "body": "Hi {{first_name}},\n\nThank you for applying for the {{role}} position at {{company}}! We reviewed your profile and are really impressed with your background.\n\nWe would love to connect for a brief phone call to learn more about you and share details about the role. Are you available this week or next? Please let me know a couple of times that work for you and I will get something scheduled right away.\n\nLooking forward to speaking with you!\n\nBest regards,\n{{company}} Recruiting"
+    },
+    {
+      "id": "invite_direct",
+      "label": "Direct Invite",
+      "body": "Hi {{first_name}},\n\nWe reviewed your application for the {{role}} role at {{company}} and would like to move forward with an interview.\n\nCould you share your availability for a quick 15 to 20 minute phone call this week? I will send over a confirmed time as soon as I hear from you.\n\nThank you!"
+    },
+    {
+      "id": "invite_urgent",
+      "label": "Urgent",
+      "body": "Hi {{first_name}},\n\nWe are actively filling the {{role}} position at {{company}} and your application stood out to us. We would love to speak with you as soon as possible.\n\nAre you available for a quick call today or tomorrow? Please share your availability and we will schedule it right away.\n\nThank you!\n{{company}}"
+    },
+    {
+      "id": "invite_schedule",
+      "label": "Sending Times",
+      "body": "Hi {{first_name}},\n\nThank you for your interest in the {{role}} position at {{company}}. We would like to schedule a phone interview to discuss your qualifications and the opportunity further.\n\nI will be sending over some available interview times shortly. Please keep an eye out and select a time that works best for you.\n\nWe look forward to connecting!\n\nBest,\n{{company}} Recruiting"
+    },
+    {
+      "id": "invite_followup",
+      "label": "Follow Up",
+      "body": "Hi {{first_name}},\n\nI wanted to follow up on your application for the {{role}} position at {{company}}. We have reviewed your profile and would love to set up a time to connect.\n\nWould you be open to a short phone call this week? Just reply with your availability and we will go from there.\n\nThanks so much,\n{{company}} Recruiting"
+    }
+  ],
+  "rejection": [
+    {
+      "id": "reject_standard",
+      "label": "Standard",
+      "body": "Hi {{first_name}},\n\nThank you for your interest in the {{role}} position at {{company}} and for taking the time to apply.\n\nAfter carefully reviewing your application we have decided to move forward with other candidates whose experience more closely aligns with our current needs.\n\nWe appreciate your interest in joining our team and wish you the best in your job search.\n\nBest regards,\n{{company}}"
+    },
+    {
+      "id": "reject_warm",
+      "label": "Warm",
+      "body": "Hi {{first_name}},\n\nThank you so much for applying to the {{role}} position at {{company}}. We truly appreciate the time you took to apply and share your background with us.\n\nAfter reviewing all applications we have decided to move in a different direction at this time. This was not an easy decision as we had many qualified candidates.\n\nWe wish you all the best in your job search and encourage you to apply again in the future if another opportunity aligns with your background.\n\nWarmly,\n{{company}}"
+    },
+    {
+      "id": "reject_future",
+      "label": "Keep in Mind",
+      "body": "Hi {{first_name}},\n\nThank you for applying to the {{role}} role at {{company}}.\n\nWe have reviewed your application and while we are moving forward with another candidate for this position we were impressed with your background. We will keep your information on file and reach out if a future opportunity becomes a good fit.\n\nThank you again and best of luck!\n\n{{company}} Recruiting"
+    },
+    {
+      "id": "reject_brief",
+      "label": "Brief",
+      "body": "Hi {{first_name}},\n\nThank you for your interest in the {{role}} position at {{company}}.\n\nAfter reviewing your application we have decided to move forward with other candidates at this time. We appreciate you taking the time to apply and wish you the best in your search.\n\nThank you,\n{{company}}"
+    }
+  ]
+}

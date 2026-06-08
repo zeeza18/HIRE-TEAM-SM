@@ -1,9 +1,9 @@
 """
-One-time interactive login for Indeed employer account (email + OTP flow).
+Interactive login for Indeed employer account — iframe OTP flow.
 
-Run this first to create config/session_state.json.
-The browser opens visibly — you enter the OTP yourself in the browser.
-Once you're on the employer dashboard, press Enter here to save the session.
+Recorded with playwright codegen and hardened with error handling.
+Opens a real browser window, auto-fills email, switches to OTP login,
+prompts you to paste the code, then saves the session.
 
 Usage:
     python scraper/indeed_login.py
@@ -14,56 +14,16 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from playwright.sync_api import sync_playwright, Page
+from playwright.sync_api import sync_playwright
 
-from scraper.utils import (
-    SESSION_STATE_FILE,
-    JOBS_URL,
-    get_logger,
-    load_credentials,
-)
+from scraper.utils import SESSION_STATE_FILE, JOBS_URL, get_logger, load_credentials
 
 log = get_logger("indeed_login")
 
-EMPLOYER_HOME = "https://employers.indeed.com/"
-
-
-def try_fill_email(page: Page, email: str):
-    """Auto-fill the email field if the login form is visible."""
-    try:
-        selectors = [
-            "input[type='email']",
-            "input[name='__email']",
-            "input[id*='email']",
-            "input[placeholder*='email' i]",
-        ]
-        for sel in selectors:
-            el = page.locator(sel).first
-            if el.count() > 0 and el.is_visible():
-                el.fill(email)
-                log.info(f"Email filled: {email}")
-                # Submit email form
-                page.keyboard.press("Enter")
-                page.wait_for_timeout(1500)
-                return
-    except Exception as e:
-        log.debug(f"Auto-fill skipped: {e}")
-
-
-def is_on_dashboard(page: Page) -> bool:
-    url = page.url
-    return (
-        "employers.indeed.com" in url
-        and "secure.indeed.com" not in url
-        and "/login" not in url
-        and "/signin" not in url
-        and "challenge" not in url
-    )
+HIRE_URL = "https://www.indeed.com/hire/cs?from=orchestrator&hl=en"
 
 
 def main():
-    log.info("Starting Indeed login — email + OTP flow")
-
     try:
         creds = load_credentials()
         email = creds.get("indeed_email", "").strip()
@@ -77,12 +37,8 @@ def main():
     with sync_playwright() as p:
         browser = p.chromium.launch(
             headless=False,
-            args=[
-                "--disable-blink-features=AutomationControlled",
-                "--start-maximized",
-            ],
+            args=["--disable-blink-features=AutomationControlled", "--start-maximized"],
         )
-
         context = browser.new_context(
             viewport=None,
             user_agent=(
@@ -91,65 +47,87 @@ def main():
                 "Chrome/131.0.0.0 Safari/537.36"
             ),
         )
-
         page = context.new_page()
 
-        log.info("Opening Indeed employer portal...")
-        page.goto(EMPLOYER_HOME, wait_until="domcontentloaded", timeout=60_000)
+        log.info("Opening Indeed hire portal...")
+        page.goto(HIRE_URL, wait_until="domcontentloaded", timeout=60_000)
         page.wait_for_timeout(2000)
 
-        # Auto-fill email if login form is present
-        if not is_on_dashboard(page):
-            try_fill_email(page, email)
-            page.wait_for_timeout(1000)
+        # Cloudflare challenge often appears on first load — wait for user to clear it
+        if "challenge" in page.url or "cloudflare" in page.content().lower():
+            print()
+            print("=" * 60)
+            print("  Cloudflare detected — complete the check in the browser,")
+            print("  then press Enter to continue.")
+            print("=" * 60)
+            input()
+            page.wait_for_timeout(1500)
+
+        log.info("Clicking Sign in...")
+        page.get_by_role("button", name="Sign in").click()
+        page.wait_for_timeout(1500)
+
+        # Login form lives inside an iframe
+        frame = page.locator("iframe[title='Login Form']").content_frame
+
+        log.info(f"Filling email: {email}")
+        email_input = frame.get_by_role("textbox", name="Email address")
+        email_input.click()
+        email_input.fill(email)
+        page.wait_for_timeout(500)
+
+        frame.get_by_test_id("modal-view-footer").get_by_role("button", name="Continue").click()
+        page.wait_for_timeout(1500)
+
+        log.info("Switching to OTP login...")
+        frame.get_by_role("link", name="Sign in with a code instead").click()
+        page.wait_for_timeout(1000)
 
         print()
         print("=" * 60)
-        print("BROWSER IS OPEN — do the following:")
+        print(f"  OTP sent to: {email}")
         print()
-        print(f"  1. Make sure the email is filled in: {email}")
-        print("     (if not, type it manually in the browser)")
-        print()
-        print("  2. Check your email inbox for the Indeed OTP code")
-        print("     and enter it in the browser")
-        print()
-        print("  3. Complete any Cloudflare challenge if it appears")
-        print()
-        print("  4. Wait until you can see your job postings dashboard")
-        print()
-        print("Then come back here and press Enter to save the session.")
+        print("  Option A: Paste the code here and press Enter (auto-fills browser)")
+        print("  Option B: Type it directly in the browser, then press Enter here")
         print("=" * 60)
-        input()
+        otp = input("  OTP code (or just press Enter if you filled it in browser): ").strip()
+        print()
 
-        if not is_on_dashboard(page):
-            log.error(f"Not on dashboard yet. Current URL: {page.url}")
-            log.error("Make sure you're fully logged in, then re-run this script.")
-            browser.close()
-            sys.exit(1)
+        if otp:
+            frame = page.locator("iframe[title='Login Form']").content_frame
+            otp_input = frame.get_by_role("textbox", name="Enter code")
+            otp_input.click()
+            otp_input.fill(otp)
+            page.wait_for_timeout(500)
+            otp_input.press("Enter")
+            log.info("OTP submitted — waiting for dashboard...")
+            page.wait_for_timeout(3000)
+        else:
+            log.info("Waiting for manual login to complete...")
+            page.wait_for_timeout(2000)
+        page.wait_for_timeout(3000)
 
-        log.info(f"Logged in. URL: {page.url}")
-
-        # Navigate to jobs page to capture all session cookies
-        log.info("Navigating to jobs page to capture full session...")
+        # Navigate to jobs page to capture full session cookies
+        log.info("Loading jobs page to capture full session...")
         page.goto(JOBS_URL, wait_until="domcontentloaded", timeout=30_000)
         page.wait_for_timeout(2000)
 
-        if not is_on_dashboard(page):
+        # Handle any follow-up Cloudflare / security challenge
+        if "challenge" in page.url or "secure.indeed.com" in page.url or "/login" in page.url:
             print()
-            print("Another challenge appeared. Complete it, then press Enter.")
+            print("Challenge detected — complete it in the browser, then press Enter.")
             input()
 
-        # Save the full browser session
         SESSION_STATE_FILE.parent.mkdir(exist_ok=True)
         context.storage_state(path=str(SESSION_STATE_FILE))
         log.info(f"Session saved → {SESSION_STATE_FILE}")
 
         print()
         print("=" * 60)
-        print("Session saved! You won't need to log in again until it expires.")
+        print("  Session saved. You won't need to log in again until it expires.")
         print()
-        print("Run the scraper now:")
-        print("  python scraper/indeed_scraper.py")
+        print("  Run the scraper:")
+        print("    python scraper/indeed_scraper.py")
         print("=" * 60)
 
         browser.close()

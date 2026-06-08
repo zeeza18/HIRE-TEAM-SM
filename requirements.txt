@@ -1,2 +1,15 @@
-playwright==1.58.0
-anthropic>=0.40.0
+# --- scraper ---
+playwright==1.58.0          # browser automation; after install run: playwright install chromium
+pdfplumber>=0.11.0          # PDF text extraction fallback when inline viewer returns nothing
+pytesseract>=0.3.10         # OCR fallback for scanned/image-based PDFs (needs Tesseract binary)
+
+# --- AI screening (Week 2+) ---
+anthropic>=0.40.0            # Claude API for resume parsing + fit scoring
+groq>=0.9.0                  # Groq LLM API for fast candidate enrichment
+
+# --- export + scheduler ---
+openpyxl>=3.1.0             # Excel file creation and update
+schedule>=1.2.0             # in-process cron scheduler
+
+# --- recruiter portal ---
+flask>=3.0.0                # web server for frontend/app.py

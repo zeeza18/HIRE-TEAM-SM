@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RMS Recruiter Portal</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/font/lucide.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f4f8; color: #1a202c; }
+
+    /* ── Header ── */
+    header {
+      background: #1F4E79; color: white;
+      padding: 0 24px; height: 58px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,.35); position: sticky; top: 0; z-index: 100;
+    }
+    header h1 { font-size: 17px; font-weight: 700; letter-spacing: .3px; }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .live-badge {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; opacity: .85;
+    }
+    .live-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #68d391;
+      animation: pulse 2s infinite;
+    }
+    .live-dot.offline { background: #fc8181; animation: none; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+    /* ── Role tabs ── */
+    .role-bar {
+      background: white; border-bottom: 2px solid #e2e8f0;
+      padding: 0 24px; display: flex; gap: 2px; overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .role-bar::-webkit-scrollbar { display: none; }
+    .role-tab {
+      padding: 13px 18px; font-size: 13px; font-weight: 500;
+      cursor: pointer; border-bottom: 3px solid transparent;
+      white-space: nowrap; color: #718096; transition: all .15s;
+      user-select: none;
+    }
+    .role-tab:hover { color: #2d3748; }
+    .role-tab.active { color: #1F4E79; border-bottom-color: #1F4E79; }
+    .role-tab .cnt {
+      background: #edf2f7; color: #4a5568;
+      padding: 1px 8px; border-radius: 99px; font-size: 11px; margin-left: 6px;
+    }
+    .role-tab.active .cnt { background: #1F4E79; color: white; }
+
+    /* ── Filter bar (LinkedIn-style stage bar) ── */
+    .filter-bar {
+      padding: 10px 24px; display: flex; align-items: center; gap: 8px;
+      background: white; border-bottom: 1px solid #e2e8f0;
+      overflow-x: auto; scrollbar-width: none;
+    }
+    .filter-bar::-webkit-scrollbar { display: none; }
+    .filter-label { display: none; }
+    .pill-group { display: flex; gap: 8px; flex-shrink: 0; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 7px 14px; border: 1.5px solid #d1d5db; border-radius: 7px;
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      background: white; color: #374151;
+      transition: border-color .15s, color .15s; user-select: none; white-space: nowrap;
+    }
+    .pill:hover { border-color: #1F4E79; color: #1F4E79; }
+    .pill.active {
+      border: 2px solid #111827; color: #111827; font-weight: 700; background: white;
+    }
+    .pill-cnt {
+      font-size: 13px; font-weight: 500; color: #6b7280;
+    }
+    .pill.active .pill-cnt { color: #111827; font-weight: 700; }
+    .cand-count { display: none; }
+
+    /* ── New-candidate banner ── */
+    .new-banner {
+      background: #C6EFCE; color: #1e5631; text-align: center;
+      padding: 9px; font-size: 13px; font-weight: 600; cursor: pointer;
+      display: none;
+    }
+    .new-banner:hover { background: #9ae6b4; }
+
+    /* ── Grid ── */
+    .grid {
+      padding: 20px 24px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(272px, 1fr));
+      gap: 16px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: white; border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+      overflow: hidden; cursor: pointer;
+      transition: transform .15s, box-shadow .15s;
+    }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.12); }
+    .card.fade-in { animation: fadeUp .4s ease both; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+    .stripe { height: 5px; }
+    .s-high { background: linear-gradient(90deg,#276749,#48bb78); }
+    .s-mid  { background: linear-gradient(90deg,#975a16,#ecc94b); }
+    .s-low  { background: linear-gradient(90deg,#9b2c2c,#fc8181); }
+    .s-none { background: #e2e8f0; }
+
+    .card-body { padding: 14px 15px 12px; }
+    .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+    .cname { font-size: 15px; font-weight: 700; color: #1a202c; line-height: 1.25; max-width: 75%; }
+    .score-num { font-size: 24px; font-weight: 800; line-height: 1; }
+    .score-num.high { color: #276749; }
+    .score-num.mid  { color: #975a16; }
+    .score-num.low  { color: #9b2c2c; }
+    .score-num.none { color: #cbd5e0; font-size: 16px; margin-top: 4px; }
+
+    .cmeta { font-size: 12px; color: #718096; margin-bottom: 7px; line-height: 1.5; }
+
+    .req-pill {
+      display: inline-block; font-size: 11px; font-weight: 700;
+      padding: 2px 8px; border-radius: 4px; margin-bottom: 8px;
+    }
+    .req-full { background: #C6EFCE; color: #1e5631; }
+    .req-part { background: #FFF2CC; color: #7d5a0a; }
+    .req-low  { background: #FFCCCC; color: #7d1515; }
+
+    .flags { display: flex; flex-wrap: wrap; gap: 4px; min-height: 20px; margin-bottom: 8px; }
+    .flag-tag {
+      font-size: 10px; padding: 2px 7px; border-radius: 4px;
+      background: #fed7d7; color: #742a2a; max-width: 180px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    .status-pill {
+      display: inline-block; font-size: 11px; font-weight: 600;
+      padding: 2px 9px; border-radius: 4px; margin-bottom: 10px;
+    }
+    .st-new          { background: #E2EFDA; color: #1e5631; }
+    .st-reviewing    { background: #FFF2CC; color: #7d5a0a; }
+    .st-contacting   { background: #FCE4D6; color: #7d3200; }
+    .st-interviewing { background: #DDEBF7; color: #1a3a5c; }
+    .st-hired        { background: #C6EFCE; color: #1e5631; }
+    .st-rejected     { background: #FFCCCC; color: #7d1515; }
+
+    .card-actions { display: flex; gap: 6px; padding-top: 10px; border-top: 1px solid #f7fafc; }
+    .act-btn {
+      flex: 1; padding: 6px 0; border: none; border-radius: 6px;
+      font-size: 11px; font-weight: 700; cursor: pointer; transition: opacity .15s;
+      letter-spacing: .2px;
+    }
+    .act-btn:hover { opacity: .8; }
+    .ab-interview        { background: #DDEBF7; color: #1a3a5c; }
+    .ab-interview.picked { background: #1F4E79; color: white; }
+    .ab-message          { background: #FEFCBF; color: #744210; }
+    .ab-message.picked   { background: #d69e2e; color: white; }
+    .ab-reject           { background: #FED7D7; color: #742a2a; }
+    .ab-reject.picked    { background: #c53030; color: white; }
+
+    /* ── Empty / Loading ── */
+    .placeholder { grid-column: 1/-1; text-align: center; padding: 80px 24px; color: #a0aec0; }
+    .placeholder-icon { font-size: 44px; margin-bottom: 12px; display: flex; justify-content: center; }
+    .placeholder-icon i { font-size: 44px; }
+    .ci i { font-size: 14px; vertical-align: middle; margin-right: 4px; }
+    .cmeta i { font-size: 13px; vertical-align: middle; margin-right: 2px; }
+
+    /* ══════════════════════════════════════════
+       MODAL
+    ══════════════════════════════════════════ */
+    .overlay {
+      position: fixed; inset: 0; background: rgba(15,23,42,.55);
+      z-index: 500; display: flex; align-items: center; justify-content: center;
+      padding: 16px;
+    }
+    .modal {
+      background: white; border-radius: 12px;
+      width: 100%; max-width: 880px; max-height: 92vh;
+      display: flex; flex-direction: column; overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,.4);
+    }
+
+    /* modal header */
+    .mhdr {
+      background: #1F4E79; color: white;
+      padding: 16px 20px; display: flex; justify-content: space-between; align-items: flex-start;
+      flex-shrink: 0;
+    }
+    .mhdr-name { font-size: 19px; font-weight: 700; }
+    .mhdr-sub  { font-size: 13px; opacity: .75; margin-top: 3px; }
+    .mhdr-close {
+      background: none; border: none; color: white; font-size: 22px;
+      cursor: pointer; padding: 0 2px; opacity: .7; line-height: 1; margin-top: -2px;
+    }
+    .mhdr-close:hover { opacity: 1; }
+
+    /* score band */
+    .score-band {
+      background: #f7fafc; border-bottom: 1px solid #e2e8f0;
+      padding: 14px 20px; display: flex; align-items: center; gap: 20px; flex-shrink: 0;
+    }
+    .big-score { font-size: 52px; font-weight: 800; line-height: 1; min-width: 70px; }
+    .big-score.high { color: #276749; }
+    .big-score.mid  { color: #975a16; }
+    .big-score.low  { color: #9b2c2c; }
+    .big-score.none { color: #cbd5e0; font-size: 30px; }
+    .score-bars { flex: 1; }
+    .sbar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+    .sbar-row:last-child { margin-bottom: 0; }
+    .sbar-lbl { font-size: 12px; color: #718096; width: 100px; }
+    .sbar-track { flex: 1; height: 9px; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
+    .sbar-fill { height: 100%; border-radius: 99px; transition: width .6s cubic-bezier(.4,0,.2,1); }
+    .fill-req { background: #1F4E79; }
+    .fill-jd  { background: #38a169; }
+    .sbar-val { font-size: 12px; font-weight: 700; color: #4a5568; width: 42px; text-align: right; }
+
+    /* contact strip */
+    .contact-strip {
+      padding: 10px 20px; display: flex; gap: 20px; flex-wrap: wrap;
+      border-bottom: 1px solid #e2e8f0; background: white; flex-shrink: 0;
+    }
+    .ci { font-size: 13px; color: #4a5568; }
+    .ci a { color: #1F4E79; text-decoration: none; }
+    .ci a:hover { text-decoration: underline; }
+
+    /* modal tabs */
+    .mtabs {
+      display: flex; border-bottom: 1px solid #e2e8f0;
+      padding: 0 20px; background: white; flex-shrink: 0;
+    }
+    .mtab {
+      padding: 10px 18px; font-size: 13px; font-weight: 500;
+      cursor: pointer; border-bottom: 3px solid transparent; color: #718096;
+      user-select: none;
+    }
+    .mtab:hover { color: #2d3748; }
+    .mtab.active { color: #1F4E79; border-bottom-color: #1F4E79; }
+
+    /* modal body scroll */
+    .mbody { overflow-y: auto; flex: 1; }
+    .tab-pane { display: none; padding: 20px; }
+    .tab-pane.active { display: block; }
+
+    /* criteria table */
+    .crit-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .crit-table th {
+      background: #f7fafc; padding: 9px 12px; text-align: left;
+      font-weight: 600; color: #4a5568; border-bottom: 2px solid #e2e8f0;
+    }
+    .crit-table td { padding: 9px 12px; border-bottom: 1px solid #f0f4f8; vertical-align: top; }
+    .crit-table tr:last-child td { border-bottom: none; }
+    .crit-table tr:hover td { background: #fafafa; }
+    .cscore { font-weight: 700; }
+    .c-zero  { color: #a0aec0; }
+    .c-full  { color: #276749; }
+    .c-part  { color: #975a16; }
+    .evid    { font-style: italic; color: #4a5568; font-size: 12px; }
+    .no-evid { color: #cbd5e0; font-size: 12px; }
+
+    /* profile sections */
+    .psec { margin-bottom: 18px; }
+    .psec h4 {
+      font-size: 11px; font-weight: 700; color: #1F4E79;
+      text-transform: uppercase; letter-spacing: .8px;
+      margin-bottom: 7px; padding-bottom: 5px; border-bottom: 1px solid #e2e8f0;
+    }
+    .psec p { font-size: 13px; color: #4a5568; white-space: pre-wrap; line-height: 1.65; }
+
+    /* resume iframe */
+    .resume-frame { width: 100%; height: 580px; border: none; border-radius: 6px; background: #f7fafc; }
+    .no-resume { text-align: center; padding: 60px; color: #a0aec0; font-size: 14px; }
+
+    /* modal footer */
+    .mfooter {
+      padding: 14px 20px; border-top: 1px solid #e2e8f0;
+      display: flex; align-items: center; gap: 10px; background: white; flex-shrink: 0;
+    }
+    .mact {
+      padding: 8px 22px; border: none; border-radius: 7px;
+      font-size: 13px; font-weight: 700; cursor: pointer; transition: opacity .15s;
+    }
+    .mact:hover { opacity: .85; }
+    .m-interview { background: #1F4E79; color: white; }
+    .m-message   { background: #d69e2e; color: white; }
+    .m-reject    { background: #c53030; color: white; }
+    .mstatus { margin-left: auto; font-size: 12px; color: #a0aec0; }
+
+    /* ── Message draft modal ── */
+    .msg-overlay { position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:600;display:flex;align-items:center;justify-content:center;padding:16px; }
+    .msg-modal { background:white;border-radius:12px;width:100%;max-width:640px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4); }
+    .msg-hdr { background:#1F4E79;color:white;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0; }
+    .msg-hdr-title { font-size:15px;font-weight:700; }
+    .msg-hdr-close { background:none;border:none;color:white;font-size:20px;cursor:pointer;opacity:.7;padding:0 2px;line-height:1; }
+    .msg-hdr-close:hover { opacity:1; }
+    .msg-tabs { display:flex;gap:4px;padding:10px 16px 0;border-bottom:1px solid #e2e8f0;background:#f7fafc;flex-shrink:0;overflow-x:auto;scrollbar-width:none; }
+    .msg-tabs::-webkit-scrollbar { display:none; }
+    .msg-tab { padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;border-radius:5px 5px 0 0;color:#718096;white-space:nowrap;border:1.5px solid transparent;border-bottom:none;user-select:none; }
+    .msg-tab:hover { color:#2d3748;background:#edf2f7; }
+    .msg-tab.active { color:#1F4E79;background:white;border-color:#e2e8f0; }
+    .msg-body { padding:14px 16px;flex:1;overflow-y:auto; }
+    .msg-textarea { width:100%;height:200px;border:1.5px solid #d1d5db;border-radius:7px;padding:11px;font-size:13px;font-family:inherit;resize:vertical;line-height:1.6;color:#1a202c; }
+    .msg-textarea:focus { outline:none;border-color:#1F4E79; }
+    .msg-foot { padding:12px 16px;border-top:1px solid #e2e8f0;display:flex;align-items:center;gap:10px;background:white;flex-shrink:0; }
+    .msg-send { padding:8px 22px;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;background:#1F4E79;color:white;transition:opacity .15s; }
+    .msg-send:hover { opacity:.85; }
+    .msg-send:disabled { opacity:.45;cursor:not-allowed; }
+    .msg-cancel { padding:8px 14px;border:1.5px solid #d1d5db;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;background:white;color:#4a5568; }
+    .msg-cancel:hover { border-color:#a0aec0; }
+    .msg-note { margin-left:auto;font-size:12px; }
+    .msg-note.err { color:#c53030; }
+    .msg-note.ok { color:#276749; }
+
+    /* ── Schedule interview modal ── */
+    .sch-modal { background:white;border-radius:12px;width:100%;max-width:500px;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.4);max-height:90vh;overflow:hidden; }
+    .sch-body { padding:18px 20px;overflow-y:auto;flex:1; }
+    .sch-row { margin-bottom:14px; }
+    .sch-lbl { font-size:11px;font-weight:700;color:#4a5568;margin-bottom:5px;display:block;text-transform:uppercase;letter-spacing:.5px; }
+    .sch-sel,.sch-in { width:100%;padding:8px 10px;border:1.5px solid #d1d5db;border-radius:7px;font-size:13px;font-family:inherit;color:#1a202c; }
+    .sch-sel:focus,.sch-in:focus { outline:none;border-color:#1F4E79; }
+    .sch-radios { display:flex;gap:16px;flex-wrap:wrap; }
+    .sch-radio { font-size:13px;color:#4a5568;cursor:pointer;display:flex;align-items:center;gap:5px; }
+    .sch-ta { width:100%;height:100px;border:1.5px solid #d1d5db;border-radius:7px;padding:10px;font-size:13px;font-family:inherit;resize:vertical;line-height:1.6;color:#1a202c; }
+    .sch-ta:focus { outline:none;border-color:#1F4E79; }
+    .sch-send { padding:8px 22px;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;background:#1F4E79;color:white;transition:opacity .15s; }
+    .sch-send:hover { opacity:.85; }
+    .sch-send:disabled { opacity:.45;cursor:not-allowed; }
+
+    /* scrollbar */
+    .mbody::-webkit-scrollbar { width: 6px; }
+    .mbody::-webkit-scrollbar-track { background: transparent; }
+    .mbody::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 99px; }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <h1>Reliable Medical Services Recruiter Portal</h1>
+  <div class="header-right">
+    <div class="live-badge">
+      <div class="live-dot" id="liveDot"></div>
+      <span id="liveLabel">Live</span>
+    </div>
+  </div>
+</header>
+
+<!-- Role tabs -->
+<div class="role-bar" id="roleTabs"></div>
+
+<!-- New-candidate banner -->
+<div class="new-banner" id="newBanner"></div>
+
+<!-- Stage bar -->
+<div class="filter-bar">
+  <div class="pill-group" id="statusPills"></div>
+  <span class="cand-count" id="candCount"></span>
+</div>
+
+<!-- Card grid -->
+<div class="grid" id="grid"></div>
+
+<!-- ══ MODAL ══ -->
+<div class="overlay" id="overlay" style="display:none">
+  <div class="modal" id="modal">
+
+    <div class="mhdr">
+      <div>
+        <div class="mhdr-name" id="mName"></div>
+        <div class="mhdr-sub"  id="mSub"></div>
+      </div>
+      <button class="mhdr-close" id="mClose">&#10005;</button>
+    </div>
+
+    <div class="score-band">
+      <div class="big-score" id="mBigScore">—</div>
+      <div class="score-bars">
+        <div class="sbar-row">
+          <span class="sbar-lbl">Requirements</span>
+          <div class="sbar-track"><div class="sbar-fill fill-req" id="barReq" style="width:0%"></div></div>
+          <span class="sbar-val" id="valReq">—</span>
+        </div>
+        <div class="sbar-row">
+          <span class="sbar-lbl">JD Match</span>
+          <div class="sbar-track"><div class="sbar-fill fill-jd" id="barJd" style="width:0%"></div></div>
+          <span class="sbar-val" id="valJd">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="contact-strip" id="mContact"></div>
+
+    <div class="mtabs" id="mtabs">
+      <div class="mtab active" data-tab="breakdown">Score Breakdown</div>
+      <div class="mtab" data-tab="profile">Profile</div>
+      <div class="mtab" data-tab="resume">Resume PDF</div>
+    </div>
+
+    <div class="mbody">
+      <div id="pane-breakdown" class="tab-pane active">
+        <table class="crit-table">
+          <thead><tr><th>Criterion</th><th>Score</th><th>Max</th><th>Evidence from Resume</th></tr></thead>
+          <tbody id="mCritBody"></tbody>
+        </table>
+      </div>
+
+      <div id="pane-profile" class="tab-pane">
+        <div id="mProfile"></div>
+      </div>
+
+      <div id="pane-resume" class="tab-pane">
+        <div id="mResume"></div>
+      </div>
+    </div>
+
+    <div class="mfooter">
+      <button class="mact m-interview" id="btnInterview">Interview</button>
+      <button class="mact m-message"   id="btnMessage">Message</button>
+      <button class="mact m-reject"    id="btnReject">Reject</button>
+      <span class="mstatus" id="mStatus"></span>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ MESSAGE DRAFT MODAL ══ -->
+<div class="msg-overlay" id="msgOverlay" style="display:none">
+  <div class="msg-modal">
+    <div class="msg-hdr">
+      <div class="msg-hdr-title" id="msgTitle">Send Message</div>
+      <button class="msg-hdr-close" id="msgClose">&#10005;</button>
+    </div>
+    <div class="msg-tabs" id="msgTabs"></div>
+    <div class="msg-body">
+      <textarea class="msg-textarea" id="msgText" placeholder="Message body..."></textarea>
+    </div>
+    <div class="msg-foot">
+      <button class="msg-send" id="msgSend">Send on Indeed</button>
+      <button class="msg-cancel" id="msgCancel">Cancel</button>
+      <span class="msg-note" id="msgNote"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCHEDULE INTERVIEW MODAL ══ -->
+<div class="msg-overlay" id="schOverlay" style="display:none">
+  <div class="sch-modal">
+    <div class="msg-hdr">
+      <div class="msg-hdr-title" id="schTitle">Schedule Interview</div>
+      <button class="msg-hdr-close" id="schClose">&#10005;</button>
+    </div>
+    <div class="sch-body">
+      <div class="sch-row">
+        <label class="sch-lbl">Duration</label>
+        <select class="sch-sel" id="schDuration">
+          <option value="15">15 min</option>
+          <option value="30" selected>30 min</option>
+          <option value="45">45 min</option>
+          <option value="60">60 min</option>
+          <option value="90">90 min</option>
+        </select>
+      </div>
+      <div class="sch-row">
+        <label class="sch-lbl">Format</label>
+        <div class="sch-radios">
+          <label class="sch-radio"><input type="radio" name="schFmt" value="Phone" checked> Phone</label>
+          <label class="sch-radio"><input type="radio" name="schFmt" value="Video"> Video</label>
+          <label class="sch-radio"><input type="radio" name="schFmt" value="In-person"> In-person</label>
+        </div>
+      </div>
+      <div class="sch-row">
+        <label class="sch-lbl">Date</label>
+        <input type="date" class="sch-in" id="schDate">
+      </div>
+      <div class="sch-row">
+        <label class="sch-lbl">Start Time</label>
+        <select class="sch-sel" id="schTime">
+          <option value="09:00">9:00 AM</option>
+          <option value="09:30">9:30 AM</option>
+          <option value="10:00" selected>10:00 AM</option>
+          <option value="10:30">10:30 AM</option>
+          <option value="11:00">11:00 AM</option>
+          <option value="11:30">11:30 AM</option>
+          <option value="12:00">12:00 PM</option>
+          <option value="12:30">12:30 PM</option>
+          <option value="13:00">1:00 PM</option>
+          <option value="13:30">1:30 PM</option>
+          <option value="14:00">2:00 PM</option>
+          <option value="14:30">2:30 PM</option>
+          <option value="15:00">3:00 PM</option>
+          <option value="15:30">3:30 PM</option>
+          <option value="16:00">4:00 PM</option>
+          <option value="16:30">4:30 PM</option>
+          <option value="17:00">5:00 PM</option>
+        </select>
+      </div>
+      <div class="sch-row">
+        <label class="sch-lbl">Message to candidate</label>
+        <textarea class="sch-ta" id="schMessage" placeholder="We'd love to speak with you about this opportunity..."></textarea>
+      </div>
+    </div>
+    <div class="msg-foot">
+      <button class="sch-send" id="schSend">Schedule on Indeed</button>
+      <button class="msg-cancel" id="schCancel">Cancel</button>
+      <span class="msg-note" id="schNote"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ REJECT CONFIRM MODAL ══ -->
+<div class="msg-overlay" id="rejectOverlay" style="display:none">
+  <div style="background:white;border-radius:12px;width:100%;max-width:400px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4);">
+    <div class="msg-hdr" style="background:#c53030;">
+      <div class="msg-hdr-title" id="rejectConfirmTitle">Reject Candidate?</div>
+    </div>
+    <div style="padding:20px 20px 8px;">
+      <p style="font-size:14px;color:#4a5568;line-height:1.6;" id="rejectConfirmBody"></p>
+    </div>
+    <div class="msg-foot">
+      <button id="rejectYesBtn" style="padding:8px 22px;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;background:#c53030;color:white;">Yes, Reject</button>
+      <button class="msg-cancel" id="rejectNoBtn">Cancel</button>
+      <span class="msg-note" id="rejectConfirmNote"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   State
+═══════════════════════════════════════════════════ */
+let ALL   = [];          // full candidate list
+let knownIds = new Set();
+let activeRole   = 'all';
+let activeStatus = 'all';
+let openCand     = null;
+
+/* ═══════════════════════════════════════════════════
+   API
+═══════════════════════════════════════════════════ */
+async function fetchAll(silent) {
+  try {
+    const r = await fetch('/api/candidates');
+    const data = await r.json();
+
+    const newOnes = data.filter(c => !knownIds.has(c.id));
+    newOnes.forEach(c => knownIds.add(c.id));
+    if (!silent && ALL.length && newOnes.length) showNewBanner(newOnes.length);
+
+    ALL = data;
+    if (!silent) renderGrid();
+    buildRoleTabs();
+    setLive(true);
+  } catch {
+    setLive(false);
+  }
+}
+
+async function patchStatus(cid, status) {
+  try {
+    await fetch(`/api/candidates/${cid}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    const c = ALL.find(x => x.id === cid);
+    if (c) c.status = status;
+    renderGrid();
+    if (openCand && openCand.id === cid) {
+      openCand.status = status;
+      refreshModalStatus();
+    }
+  } catch { alert('Status update failed — check the server.'); }
+}
+
+/* ═══════════════════════════════════════════════════
+   Live indicator
+═══════════════════════════════════════════════════ */
+function setLive(ok) {
+  const dot = document.getElementById('liveDot');
+  const lbl = document.getElementById('liveLabel');
+  dot.className = 'live-dot' + (ok ? '' : ' offline');
+  lbl.textContent = ok ? 'Live' : 'Offline';
+}
+
+/* ═══════════════════════════════════════════════════
+   Role tabs
+═══════════════════════════════════════════════════ */
+function buildRoleTabs() {
+  const counts = {};
+  ALL.forEach(c => {
+    const r = c.job_title || 'Unknown';
+    counts[r] = (counts[r] || 0) + 1;
+  });
+  const bar = document.getElementById('roleTabs');
+  bar.innerHTML = '';
+
+  function tab(label, role, count) {
+    const d = document.createElement('div');
+    d.className = 'role-tab' + (activeRole === role ? ' active' : '');
+    d.innerHTML = `${label}<span class="cnt">${count}</span>`;
+    d.onclick = () => { activeRole = role; buildRoleTabs(); renderGrid(); };
+    bar.appendChild(d);
+  }
+
+  tab('All', 'all', ALL.length);
+  Object.entries(counts).sort(([a],[b]) => a.localeCompare(b)).forEach(([r, n]) => tab(r, r, n));
+  buildStatusPills();
+}
+
+/* ═══════════════════════════════════════════════════
+   Status pills (dynamic — rebuilt on every data change)
+═══════════════════════════════════════════════════ */
+const PILL_DEFS = [
+  { s: 'all',          label: 'All'          },
+  { s: 'new',          label: 'New'          },
+  { s: 'reviewing',    label: 'Hold'         },
+  { s: 'contacting',   label: 'Contacting'   },
+  { s: 'interviewing', label: 'Interviewing' },
+  { s: 'rejected',     label: 'Rejected'     },
+  { s: 'hired',        label: 'Hired'        },
+];
+
+function buildStatusPills() {
+  const roleFiltered = activeRole === 'all'
+    ? ALL
+    : ALL.filter(c => c.job_title === activeRole);
+
+  const counts = { all: roleFiltered.length };
+  PILL_DEFS.forEach(({ s }) => { if (s !== 'all') counts[s] = 0; });
+  roleFiltered.forEach(c => {
+    const st = (c.status || 'new').toLowerCase();
+    if (counts[st] !== undefined) counts[st]++;
+  });
+
+  document.getElementById('statusPills').innerHTML = PILL_DEFS.map(({ s, label }) =>
+    `<div class="pill${activeStatus === s ? ' active' : ''}" data-s="${s}">${label}<span class="pill-cnt">${counts[s] ?? 0}</span></div>`
+  ).join('');
+  document.getElementById('candCount').textContent = '';
+}
+
+document.getElementById('statusPills').addEventListener('click', e => {
+  const pill = e.target.closest('.pill');
+  if (!pill) return;
+  activeStatus = pill.dataset.s;
+  renderGrid();
+});
+
+/* ═══════════════════════════════════════════════════
+   Helpers
+═══════════════════════════════════════════════════ */
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function scoreKlass(n) {
+  if (n === null || n === undefined) return 'none';
+  if (n >= 65) return 'high';
+  if (n >= 40) return 'mid';
+  return 'low';
+}
+
+function stripeKlass(n) {
+  if (n === null || n === undefined) return 's-none';
+  if (n >= 65) return 's-high';
+  if (n >= 40) return 's-mid';
+  return 's-low';
+}
+
+function reqKlass(s) {
+  if (!s) return '';
+  const [m, t] = s.split('/').map(Number);
+  if (!t) return '';
+  const r = m / t;
+  if (r >= 1) return 'req-full';
+  if (r >= 0.6) return 'req-part';
+  return 'req-low';
+}
+
+function statusLabel(st) {
+  return {
+    new: 'New', reviewing: 'Hold', contacting: 'Contacting',
+    interviewing: 'Interviewing', hired: 'Hired', rejected: 'Rejected',
+  }[st] || st;
+}
+
+function critKlass(score, max) {
+  if (!score) return 'c-zero';
+  if (score >= max) return 'c-full';
+  return 'c-part';
+}
+
+/* ═══════════════════════════════════════════════════
+   Grid
+═══════════════════════════════════════════════════ */
+function filteredList() {
+  return ALL.filter(c => {
+    if (activeRole !== 'all' && c.job_title !== activeRole) return false;
+    if (activeStatus !== 'all' && (c.status || 'new') !== activeStatus) return false;
+    return true;
+  });
+}
+
+function renderGrid() {
+  buildStatusPills();
+  const list = filteredList();
+  const grid = document.getElementById('grid');
+  document.getElementById('candCount').textContent = `${list.length} candidate${list.length !== 1 ? 's' : ''}`;
+
+  if (!list.length) {
+    grid.innerHTML = '<div class="placeholder"><div class="placeholder-icon"><i class="lucide-search"></i></div><div>No candidates match the current filters</div></div>';
+    return;
+  }
+
+  grid.innerHTML = list.map(c => cardHTML(c)).join('');
+
+  grid.querySelectorAll('.card').forEach(el => {
+    el.addEventListener('click', () => {
+      const c = ALL.find(x => x.id === el.dataset.id);
+      if (c) openModal(c);
+    });
+  });
+
+  grid.querySelectorAll('.act-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const cand = ALL.find(x => x.id === btn.dataset.id);
+      if (!cand) return;
+      const action = btn.dataset.action || '';
+      if      (action === 'schedule') openSchModal(cand);
+      else if (action === 'message')  openMsgModal(cand);
+      else if (action === 'reject')   confirmReject(cand);
+      else if (btn.dataset.st)        patchStatus(btn.dataset.id, btn.dataset.st);
+    });
+  });
+}
+
+function cardHTML(c) {
+  const sc   = c.fit_score;
+  const skc  = scoreKlass(sc);
+  const st   = (c.status || 'new').toLowerCase();
+  const flags = (c.flags || []).slice(0, 2);
+  const req   = c.req_score || '';
+
+  const isInterview  = st === 'interviewing';
+  const isContacting = st === 'contacting';
+  const isReject     = st === 'rejected';
+
+  return `
+<div class="card fade-in" data-id="${esc(c.id)}">
+  <div class="stripe ${stripeKlass(sc)}"></div>
+  <div class="card-body">
+    <div class="card-top">
+      <div class="cname">${esc(c.full_name || '—')}</div>
+      <div class="score-num ${skc}">${sc !== null && sc !== undefined ? sc : '—'}</div>
+    </div>
+    <div class="cmeta">
+      ${esc(c.job_title || '')}${c.geography ? ' &nbsp;·&nbsp; <i class="lucide-map-pin"></i>' + esc(c.geography) : ''}
+    </div>
+    ${req ? `<div class="req-pill ${reqKlass(req)}">Req: ${esc(req)}</div>` : ''}
+    <div class="flags">
+      ${flags.map(f => `<span class="flag-tag" title="${esc(f)}">${esc(f)}</span>`).join('')}
+    </div>
+    <div class="status-pill st-${st}">${statusLabel(st)}</div>
+    <div class="card-actions">
+      <button class="act-btn ab-interview${isInterview?' picked':''}" data-id="${esc(c.id)}" data-action="schedule">Interview</button>
+      <button class="act-btn ab-message${isContacting?' picked':''}" data-id="${esc(c.id)}" data-action="message">Message</button>
+      <button class="act-btn ab-reject${isReject?' picked':''}"     data-id="${esc(c.id)}" data-action="reject">Reject</button>
+    </div>
+  </div>
+</div>`;
+}
+
+/* ═══════════════════════════════════════════════════
+   Modal
+═══════════════════════════════════════════════════ */
+function openModal(c) {
+  openCand = c;
+  const bd  = c.score_breakdown || {};
+  const sc  = c.fit_score;
+  const skc = scoreKlass(sc);
+
+  document.getElementById('mName').textContent = c.full_name || '—';
+  document.getElementById('mSub').textContent  = [c.job_title, c.geography].filter(Boolean).join(' · ');
+
+  // Big score
+  const big = document.getElementById('mBigScore');
+  big.className = `big-score ${skc}`;
+  big.textContent = sc !== null && sc !== undefined ? sc : '—';
+
+  // Score bars (50 = 100%)
+  const req = bd.requirements_score ?? 0;
+  const jd  = bd.jd_score ?? 0;
+  document.getElementById('barReq').style.width = `${Math.min(req * 2, 100)}%`;
+  document.getElementById('barJd').style.width  = `${Math.min(jd  * 2, 100)}%`;
+  document.getElementById('valReq').textContent = `${req}/50`;
+  document.getElementById('valJd').textContent  = `${jd}/50`;
+
+  // Contact
+  const parts = [];
+  if (c.email) parts.push(`<div class="ci"><i class="lucide-mail"></i> <a href="mailto:${esc(c.email)}">${esc(c.email)}</a></div>`);
+  if (c.phone) parts.push(`<div class="ci"><i class="lucide-phone"></i> <a href="tel:${esc(c.phone)}">${esc(c.phone)}</a></div>`);
+  if (c.credential) parts.push(`<div class="ci"><i class="lucide-graduation-cap"></i> ${esc(c.credential)}</div>`);
+  if (c.work_auth)  parts.push(`<div class="ci"><i class="lucide-id-card"></i> ${esc(c.work_auth)}</div>`);
+  document.getElementById('mContact').innerHTML = parts.join('') || '<div class="ci" style="color:#a0aec0">No contact info</div>';
+
+  // Criteria table
+  const criteria = bd.criteria || {};
+  const tbody = document.getElementById('mCritBody');
+  const rows = Object.entries(criteria).map(([key, v]) => {
+    const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    const ck    = critKlass(v.score, v.max);
+    const evid  = v.evidence
+      ? `<span class="evid">"${esc(v.evidence)}"</span>`
+      : `<span class="no-evid">No evidence — scored 0</span>`;
+    return `<tr>
+      <td>${label}</td>
+      <td><span class="cscore ${ck}">${v.score}</span></td>
+      <td style="color:#a0aec0">${v.max}</td>
+      <td>${evid}</td>
+    </tr>`;
+  });
+  tbody.innerHTML = rows.length
+    ? rows.join('')
+    : '<tr><td colspan="4" style="color:#a0aec0;text-align:center;padding:20px">No score breakdown available yet</td></tr>';
+
+  // Profile tab
+  const sections = [
+    ['Professional Summary', c.professional_summary],
+    ['Experience', c.experience],
+    ['Certifications', c.certifications],
+    ['Education', c.education],
+    ['Skills', c.skills],
+    ['Cover Letter', c.cover_letter],
+  ];
+  const profHTML = sections
+    .filter(([, v]) => v && String(v).trim())
+    .map(([t, v]) => `<div class="psec"><h4>${t}</h4><p>${esc(v)}</p></div>`)
+    .join('');
+  document.getElementById('mProfile').innerHTML = profHTML ||
+    '<div style="color:#a0aec0;padding:20px;text-align:center">No profile data yet — run pipeline to enrich</div>';
+
+  // Resume PDF
+  const fname = c.id ? `${c.id}.pdf` : null;
+  document.getElementById('mResume').innerHTML = fname
+    ? `<iframe class="resume-frame" src="/resume/${esc(fname)}"></iframe>`
+    : '<div class="no-resume">No resume PDF available</div>';
+
+  refreshModalStatus();
+  switchTab('breakdown');
+  document.getElementById('overlay').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('overlay').style.display = 'none';
+  document.body.style.overflow = '';
+  openCand = null;
+}
+
+function refreshModalStatus() {
+  if (!openCand) return;
+  const st = (openCand.status || 'new').toLowerCase();
+  document.getElementById('mStatus').textContent = `Status: ${statusLabel(st)}`;
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.mtab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === `pane-${name}`));
+}
+
+/* ═══════════════════════════════════════════════════
+   Events
+═══════════════════════════════════════════════════ */
+document.getElementById('overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('overlay')) closeModal();
+});
+document.getElementById('mClose').addEventListener('click', closeModal);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+document.getElementById('mtabs').addEventListener('click', e => {
+  const tab = e.target.closest('.mtab');
+  if (tab) switchTab(tab.dataset.tab);
+});
+
+document.getElementById('btnInterview').addEventListener('click', () => {
+  if (openCand) { closeModal(); openSchModal(openCand); }
+});
+document.getElementById('btnMessage').addEventListener('click', () => {
+  if (openCand) { closeModal(); openMsgModal(openCand); }
+});
+document.getElementById('btnReject').addEventListener('click', () => {
+  if (openCand) { closeModal(); confirmReject(openCand); }
+});
+
+/* ═══════════════════════════════════════════════════
+   New-candidate banner
+═══════════════════════════════════════════════════ */
+function showNewBanner(count) {
+  const b = document.getElementById('newBanner');
+  b.textContent = `${count} new candidate${count > 1 ? 's' : ''} pulled — click to reload`;
+  b.style.display = 'block';
+  b.onclick = () => { b.style.display = 'none'; renderGrid(); };
+}
+
+/* ═══════════════════════════════════════════════════
+   Templates (loaded once from server)
+═══════════════════════════════════════════════════ */
+let TEMPLATES = { interview_invite: [], rejection: [] };
+
+async function loadTemplates() {
+  try {
+    const r = await fetch('/api/message-templates');
+    if (!r.ok) return;
+    const data = await r.json();
+    if (data.interview_invite) TEMPLATES = data;
+  } catch { }
+}
+
+function fillTpl(body, cand) {
+  const first = (cand.full_name || '').split(' ')[0];
+  return body
+    .replace(/\{\{first_name\}\}/g, first)
+    .replace(/\{\{name\}\}/g, cand.full_name || '')
+    .replace(/\{\{role\}\}/g, cand.job_title || 'the position')
+    .replace(/\{\{company\}\}/g, 'Reliable Medical Services');
+}
+
+/* ═══════════════════════════════════════════════════
+   Message Draft Modal
+═══════════════════════════════════════════════════ */
+let msgCand = null;
+let msgDrafts = [];
+
+function openMsgModal(cand) {
+  msgCand = cand;
+  msgDrafts = (TEMPLATES.interview_invite || [])
+    .map(t => ({ ...t, body: fillTpl(t.body, cand) }));
+
+  document.getElementById('msgTitle').textContent = 'Message ' + (cand.full_name || '');
+
+  const tabs = document.getElementById('msgTabs');
+  tabs.innerHTML = msgDrafts.map((d, i) =>
+    `<div class="msg-tab${i === 0 ? ' active' : ''}" data-i="${i}">${esc(d.label)}</div>`
+  ).join('');
+  tabs.querySelectorAll('.msg-tab').forEach(t =>
+    t.addEventListener('click', () => {
+      tabs.querySelectorAll('.msg-tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      document.getElementById('msgText').value = msgDrafts[+t.dataset.i].body;
+    })
+  );
+
+  document.getElementById('msgText').value = msgDrafts[0]?.body || '';
+  document.getElementById('msgNote').textContent = '';
+  document.getElementById('msgNote').className = 'msg-note';
+  const btn = document.getElementById('msgSend');
+  btn.disabled = false;
+  btn.textContent = 'Send on Indeed';
+  document.getElementById('msgOverlay').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeMsgModal() {
+  document.getElementById('msgOverlay').style.display = 'none';
+  document.body.style.overflow = '';
+  msgCand = null;
+}
+
+document.getElementById('msgClose').addEventListener('click', closeMsgModal);
+document.getElementById('msgCancel').addEventListener('click', closeMsgModal);
+document.getElementById('msgOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('msgOverlay')) closeMsgModal();
+});
+
+document.getElementById('msgSend').addEventListener('click', async () => {
+  if (!msgCand) return;
+  const message = document.getElementById('msgText').value.trim();
+  if (!message) { alert('Message cannot be empty.'); return; }
+
+  const btn  = document.getElementById('msgSend');
+  const note = document.getElementById('msgNote');
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+  note.textContent = 'Opening Indeed and sending... (about 20 to 30 seconds)';
+  note.className = 'msg-note';
+
+  try {
+    const r = await fetch('/api/send-message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ candidate_id: msgCand.id, message, new_status: 'contacting' }),
+    });
+    const ct = r.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) {
+      const txt = await r.text();
+      throw new Error(`Server returned HTTP ${r.status} (non-JSON): ${txt.slice(0, 200)}`);
+    }
+    const data = await r.json();
+    if (data.ok) {
+      const c = ALL.find(x => x.id === msgCand.id);
+      if (c) c.status = data.status;
+      renderGrid();
+      note.textContent = 'Sent!';
+      note.className = 'msg-note ok';
+      setTimeout(closeMsgModal, 1400);
+    } else {
+      note.textContent = `Error: ${data.error}`;
+      note.className = 'msg-note err';
+      btn.disabled = false;
+      btn.textContent = 'Send on Indeed';
+    }
+  } catch (err) {
+    note.textContent = `Network error: ${err.message}`;
+    note.className = 'msg-note err';
+    btn.disabled = false;
+    btn.textContent = 'Send on Indeed';
+  }
+});
+
+/* ═══════════════════════════════════════════════════
+   Schedule Interview Modal
+═══════════════════════════════════════════════════ */
+let schCand = null;
+
+function openSchModal(cand) {
+  schCand = cand;
+  document.getElementById('schTitle').textContent = `Schedule — ${cand.full_name || ''}`;
+
+  // Default date = tomorrow
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  document.getElementById('schDate').value = tomorrow.toISOString().slice(0, 10);
+  document.getElementById('schTime').value = '10:00';
+  document.getElementById('schDuration').value = '30';
+  const phoneRadio = document.querySelector('input[name="schFmt"][value="Phone"]');
+  if (phoneRadio) phoneRadio.checked = true;
+
+  // Pre-fill message with "invite_schedule" template
+  const tpl = TEMPLATES.interview_invite.find(t => t.id === 'invite_schedule')
+    || TEMPLATES.interview_invite[0];
+  document.getElementById('schMessage').value = tpl ? fillTpl(tpl.body, cand) : '';
+
+  document.getElementById('schNote').textContent = '';
+  document.getElementById('schNote').className = 'msg-note';
+  const btn = document.getElementById('schSend');
+  btn.disabled = false;
+  btn.textContent = 'Schedule on Indeed';
+  document.getElementById('schOverlay').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeSchModal() {
+  document.getElementById('schOverlay').style.display = 'none';
+  document.body.style.overflow = '';
+  schCand = null;
+}
+
+document.getElementById('schClose').addEventListener('click', closeSchModal);
+document.getElementById('schCancel').addEventListener('click', closeSchModal);
+document.getElementById('schOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('schOverlay')) closeSchModal();
+});
+
+document.getElementById('schSend').addEventListener('click', async () => {
+  if (!schCand) return;
+  const date     = document.getElementById('schDate').value;
+  const time     = document.getElementById('schTime').value;
+  const duration = document.getElementById('schDuration').value;
+  const format   = document.querySelector('input[name="schFmt"]:checked')?.value || 'Phone';
+  const message  = document.getElementById('schMessage').value.trim();
+  if (!date) { alert('Please select a date.'); return; }
+
+  const btn  = document.getElementById('schSend');
+  const note = document.getElementById('schNote');
+  btn.disabled = true;
+  btn.textContent = 'Scheduling…';
+  note.textContent = 'Opening Indeed and scheduling... (about 30 to 45 seconds)';
+  note.className = 'msg-note';
+
+  try {
+    const r = await fetch('/api/schedule-interview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ candidate_id: schCand.id, message, interview_date: date, start_time: time, duration, format }),
+    });
+    const data = await r.json();
+    if (data.ok) {
+      const c = ALL.find(x => x.id === schCand.id);
+      if (c) c.status = 'interviewing';
+      renderGrid();
+      note.textContent = 'Interview scheduled!';
+      note.className = 'msg-note ok';
+      setTimeout(closeSchModal, 1400);
+    } else {
+      note.textContent = `Error: ${data.error}`;
+      note.className = 'msg-note err';
+      btn.disabled = false;
+      btn.textContent = 'Schedule on Indeed';
+    }
+  } catch (err) {
+    note.textContent = `Network error: ${err.message}`;
+    note.className = 'msg-note err';
+    btn.disabled = false;
+    btn.textContent = 'Schedule on Indeed';
+  }
+});
+
+/* ═══════════════════════════════════════════════════
+   Reject Confirmation Modal
+═══════════════════════════════════════════════════ */
+let rejectCand = null;
+
+function confirmReject(cand) {
+  rejectCand = cand;
+  document.getElementById('rejectConfirmTitle').textContent = `Reject ${cand.full_name || 'this candidate'}?`;
+  document.getElementById('rejectConfirmBody').textContent =
+    `This will send a rejection message to ${cand.full_name || 'this candidate'} on Indeed.`;
+  document.getElementById('rejectConfirmNote').textContent = '';
+  document.getElementById('rejectConfirmNote').className = 'msg-note';
+  const btn = document.getElementById('rejectYesBtn');
+  btn.disabled = false;
+  btn.textContent = 'Yes, Reject';
+  document.getElementById('rejectOverlay').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeRejectModal() {
+  document.getElementById('rejectOverlay').style.display = 'none';
+  document.body.style.overflow = '';
+  rejectCand = null;
+}
+
+document.getElementById('rejectNoBtn').addEventListener('click', closeRejectModal);
+document.getElementById('rejectOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('rejectOverlay')) closeRejectModal();
+});
+
+document.getElementById('rejectYesBtn').addEventListener('click', async () => {
+  if (!rejectCand) return;
+  const btn  = document.getElementById('rejectYesBtn');
+  const note = document.getElementById('rejectConfirmNote');
+  btn.disabled = true;
+  btn.textContent = 'Rejecting...';
+  note.textContent = 'Opening Indeed and marking as rejected (~10 seconds)';
+  note.className = 'msg-note';
+
+  try {
+    const r = await fetch('/api/reject', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ candidate_id: rejectCand.id }),
+    });
+    const ct = r.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) {
+      const txt = await r.text();
+      throw new Error(`Server returned HTTP ${r.status} (non-JSON): ${txt.slice(0, 200)}`);
+    }
+    const data = await r.json();
+    if (data.ok) {
+      const c = ALL.find(x => x.id === rejectCand.id);
+      if (c) c.status = 'rejected';
+      renderGrid();
+      note.textContent = 'Rejected on Indeed!';
+      note.className = 'msg-note ok';
+      setTimeout(closeRejectModal, 1400);
+    } else {
+      note.textContent = `Error: ${data.error}`;
+      note.className = 'msg-note err';
+      btn.disabled = false;
+      btn.textContent = 'Yes, Reject';
+    }
+  } catch (err) {
+    note.textContent = `Network error: ${err.message}`;
+    note.className = 'msg-note err';
+    btn.disabled = false;
+    btn.textContent = 'Yes, Reject';
+  }
+});
+
+/* ═══════════════════════════════════════════════════
+   Boot + poll every 20s
+═══════════════════════════════════════════════════ */
+loadTemplates();
+fetchAll(false);
+setInterval(() => fetchAll(true), 20000);
+</script>
+</body>
+</html>
