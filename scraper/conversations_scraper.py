@@ -143,16 +143,28 @@ def _extract_messages(page) -> list:
         return []
 
 
+def _dismiss_overlays(page):
+    """Dismiss any popups or overlays that block the conversation list."""
+    for locator in [
+        page.get_by_test_id("messagingPolicyAndTermsModal-closeButton"),
+        page.get_by_role("button", name="Got it"),
+        page.get_by_role("button", name="Got It"),
+        page.get_by_role("button", name="Dismiss"),
+        page.get_by_test_id("onboarding-popup-close"),
+    ]:
+        try:
+            if locator.count() > 0:
+                locator.first.click()
+                log.info("Dismissed overlay")
+                _pause(0.6, 1.0)
+        except Exception:
+            pass
+
+
 def _open_messages_page(page):
     page.goto(MESSAGES_URL, wait_until="domcontentloaded", timeout=30_000)
     _pause(2.5, 4.0)
-    try:
-        popup = page.get_by_test_id("onboarding-popup-close")
-        if popup.count():
-            popup.click()
-            _pause(0.5, 1.0)
-    except Exception:
-        pass
+    _dismiss_overlays(page)
     try:
         inbox = page.get_by_role("tab", name="Inbox")
         if inbox.count():
@@ -160,6 +172,7 @@ def _open_messages_page(page):
             _pause(1.0, 1.5)
     except Exception:
         pass
+    _dismiss_overlays(page)   # second pass — some popups appear after tab click
 
 
 def scrape(max_threads: int = 50) -> list:
