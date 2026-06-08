@@ -22,7 +22,14 @@ from scraper.utils import (
 )
 
 log = get_logger("messenger")
-TEMPLATES_FILE = CONFIG_DIR / "message_templates.json"
+TEMPLATES_FILE  = CONFIG_DIR / "message_templates.json"
+SETTINGS_FILE   = CONFIG_DIR / "settings.json"
+
+
+def _load_settings() -> dict:
+    if SETTINGS_FILE.exists():
+        return json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
+    return {}
 
 
 # ── tiny helpers (duplicated from scraper to avoid circular import) ─────────
@@ -50,14 +57,18 @@ def _load_templates() -> dict:
 
 
 def _fill_template(body: str, candidate: dict) -> str:
+    settings   = _load_settings()
     first_name = (candidate.get("full_name") or "").split()[0]
-    role = candidate.get("job_title") or "the position"
+    role       = candidate.get("job_title") or "the position"
     return (
         body
         .replace("{{first_name}}", first_name)
         .replace("{{name}}", candidate.get("full_name") or "")
         .replace("{{role}}", role)
-        .replace("{{company}}", "Reliable Medical Services")
+        .replace("{{company}}", settings.get("company", "Reliable Medical Services"))
+        .replace("{{scheduling_link}}", settings.get("scheduling_link", ""))
+        .replace("{{sender_name}}", settings.get("sender_name", ""))
+        .replace("{{sender_title}}", settings.get("sender_title", ""))
     )
 
 

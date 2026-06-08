@@ -8,6 +8,7 @@ Message: asks candidate for the best time and number to reach them.
 Usage:
     python scraper/test_messaging.py
 """
+import json
 import re
 import sys
 import time
@@ -17,25 +18,41 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from playwright.sync_api import sync_playwright
-from scraper.utils import SESSION_STATE_FILE, CANDIDATES_DIR, get_logger, load_json
+from scraper.utils import SESSION_STATE_FILE, CANDIDATES_DIR, CONFIG_DIR, get_logger, load_json
 
 log = get_logger("test_messaging")
 
 CANDIDATE_ID = "indeed-50bda6094469"   # SHIFA FARHEEN
 
-MESSAGE = (
-    "Hi Shifa,\n\n"
-    "Thank you for applying for the Administrator position at Reliable Medical "
-    "Services. My name is Ayesha and I am the Assistant Administrator here.\n\n"
-    "We reviewed your profile and would love to connect with you to learn more "
-    "about your background and share details about the role.\n\n"
-    "Could you please let me know the best time and number to reach you? "
-    "I look forward to speaking with you soon!\n\n"
-    "Best regards,\n"
-    "Ayesha\n"
-    "Assistant Administrator\n"
-    "Reliable Medical Services"
-)
+SETTINGS_FILE = CONFIG_DIR / "settings.json"
+
+
+def _load_settings() -> dict:
+    if SETTINGS_FILE.exists():
+        return json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
+    return {}
+
+
+def _build_message(first_name: str, role: str) -> str:
+    s = _load_settings()
+    scheduling_link = s.get("scheduling_link", "")
+    sender_name     = s.get("sender_name", "Ayesha")
+    sender_title    = s.get("sender_title", "Assistant Administrator")
+    company         = s.get("company", "Reliable Medical Services")
+    link_line       = f"\n{scheduling_link}\n" if scheduling_link else ""
+    return (
+        f"Hi {first_name},\n\n"
+        f"Thank you for applying for the {role} position at {company}. "
+        f"My name is {sender_name} and I am the {sender_title} here.\n\n"
+        f"We reviewed your profile and would love to connect with you to learn more "
+        f"about your background and share details about the role.\n\n"
+        f"Please use the link below to book a quick call at a time that works for you:{link_line}\n"
+        f"I look forward to speaking with you soon!\n\n"
+        f"Best regards,\n"
+        f"{sender_name}\n"
+        f"{sender_title}\n"
+        f"{company}"
+    )
 
 
 def _pause(lo=0.8, hi=1.8):
@@ -70,7 +87,12 @@ def run():
         log.error("No session. Run: python scraper/indeed_login.py")
         return
 
+    first_name = full_name.split()[0]
+    role       = data.get("job_title", "Administrator")
+    MESSAGE    = _build_message(first_name, role)
+
     log.info(f"Sending message to {full_name} via profile URL...")
+    log.info(f"Message preview:\n{MESSAGE[:120]}...")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(

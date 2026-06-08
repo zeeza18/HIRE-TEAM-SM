@@ -3,27 +3,27 @@
     {
       "id": "invite_warm",
       "label": "Warm Invite",
-      "body": "Hi {{first_name}},\n\nThank you for applying for the {{role}} position at {{company}}! We reviewed your profile and are really impressed with your background.\n\nWe would love to connect for a brief phone call to learn more about you and share details about the role. Are you available this week or next? Please let me know a couple of times that work for you and I will get something scheduled right away.\n\nLooking forward to speaking with you!\n\nBest regards,\n{{company}} Recruiting"
+      "body": "Hi {{first_name}},\n\nThank you for applying for the {{role}} position at {{company}}! We reviewed your profile and are really impressed with your background.\n\nWe would love to connect for a brief phone call to learn more about you and share details about the role. Please use the link below to pick a time that works best for you:\n\n{{scheduling_link}}\n\nLooking forward to speaking with you!\n\nBest regards,\n{{company}} Recruiting"
     },
     {
       "id": "invite_direct",
       "label": "Direct Invite",
-      "body": "Hi {{first_name}},\n\nWe reviewed your application for the {{role}} role at {{company}} and would like to move forward with an interview.\n\nCould you share your availability for a quick 15 to 20 minute phone call this week? I will send over a confirmed time as soon as I hear from you.\n\nThank you!"
+      "body": "Hi {{first_name}},\n\nWe reviewed your application for the {{role}} role at {{company}} and would like to move forward with an interview.\n\nPlease use the link below to book a time that works for you — it only takes a minute:\n\n{{scheduling_link}}\n\nThank you!"
     },
     {
       "id": "invite_urgent",
       "label": "Urgent",
-      "body": "Hi {{first_name}},\n\nWe are actively filling the {{role}} position at {{company}} and your application stood out to us. We would love to speak with you as soon as possible.\n\nAre you available for a quick call today or tomorrow? Please share your availability and we will schedule it right away.\n\nThank you!\n{{company}}"
+      "body": "Hi {{first_name}},\n\nWe are actively filling the {{role}} position at {{company}} and your application stood out to us. We would love to speak with you as soon as possible.\n\nPlease book a quick call using the link below:\n\n{{scheduling_link}}\n\nThank you!\n{{company}}"
     },
     {
       "id": "invite_schedule",
       "label": "Sending Times",
-      "body": "Hi {{first_name}},\n\nThank you for your interest in the {{role}} position at {{company}}. We would like to schedule a phone interview to discuss your qualifications and the opportunity further.\n\nI will be sending over some available interview times shortly. Please keep an eye out and select a time that works best for you.\n\nWe look forward to connecting!\n\nBest,\n{{company}} Recruiting"
+      "body": "Hi {{first_name}},\n\nThank you for your interest in the {{role}} position at {{company}}. We would like to schedule a phone interview to discuss your qualifications and the opportunity further.\n\nPlease select a time that works best for you using the link below:\n\n{{scheduling_link}}\n\nWe look forward to connecting!\n\nBest,\n{{company}} Recruiting"
     },
     {
       "id": "invite_followup",
       "label": "Follow Up",
-      "body": "Hi {{first_name}},\n\nI wanted to follow up on your application for the {{role}} position at {{company}}. We have reviewed your profile and would love to set up a time to connect.\n\nWould you be open to a short phone call this week? Just reply with your availability and we will go from there.\n\nThanks so much,\n{{company}} Recruiting"
+      "body": "Hi {{first_name}},\n\nI wanted to follow up on your application for the {{role}} position at {{company}}. We have reviewed your profile and would love to set up a time to connect.\n\nYou can book a quick call here at your convenience:\n\n{{scheduling_link}}\n\nThanks so much,\n{{company}} Recruiting"
     }
   ],
   "rejection": [
