@@ -78,6 +78,14 @@ def resume(filename):
     return send_from_directory(str(RESUMES_DIR), filename)
 
 
+@app.route("/api/settings")
+def api_settings():
+    settings_path = Path(__file__).parent.parent / "config" / "settings.json"
+    if settings_path.exists():
+        return jsonify(json.loads(settings_path.read_text(encoding="utf-8")))
+    return jsonify({})
+
+
 @app.route("/api/health")
 def api_health():
     return jsonify({"ok": True, "messenger_ok": _MESSENGER_ERROR is None,

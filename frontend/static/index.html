@@ -907,13 +907,16 @@ function showNewBanner(count) {
    Templates (loaded once from server)
 ═══════════════════════════════════════════════════ */
 let TEMPLATES = { interview_invite: [], rejection: [] };
+let SETTINGS   = {};
 
 async function loadTemplates() {
   try {
-    const r = await fetch('/api/message-templates');
-    if (!r.ok) return;
-    const data = await r.json();
-    if (data.interview_invite) TEMPLATES = data;
+    const [tr, sr] = await Promise.all([
+      fetch('/api/message-templates'),
+      fetch('/api/settings'),
+    ]);
+    if (tr.ok) { const d = await tr.json(); if (d.interview_invite) TEMPLATES = d; }
+    if (sr.ok) { SETTINGS = await sr.json(); }
   } catch { }
 }
 
@@ -923,7 +926,10 @@ function fillTpl(body, cand) {
     .replace(/\{\{first_name\}\}/g, first)
     .replace(/\{\{name\}\}/g, cand.full_name || '')
     .replace(/\{\{role\}\}/g, cand.job_title || 'the position')
-    .replace(/\{\{company\}\}/g, 'Reliable Medical Services');
+    .replace(/\{\{company\}\}/g, SETTINGS.company || 'Reliable Medical Services')
+    .replace(/\{\{scheduling_link\}\}/g, SETTINGS.scheduling_link || '')
+    .replace(/\{\{sender_name\}\}/g, SETTINGS.sender_name || '')
+    .replace(/\{\{sender_title\}\}/g, SETTINGS.sender_title || '');
 }
 
 /* ═══════════════════════════════════════════════════

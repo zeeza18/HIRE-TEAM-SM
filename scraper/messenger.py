@@ -199,11 +199,11 @@ def _open_messaging_from_profile(page: Page, profile_url: str, full_name: str) -
     via actionsContainer (...) → send-new-message on the profile panel.
     """
     page.goto(profile_url, wait_until="domcontentloaded", timeout=30_000)
-    _pause(2.0, 3.5)
+    _pause(2.5, 4.0)
     _dismiss_popup(page)
 
     try:
-        page.wait_for_selector("[data-testid='actionsContainer']", timeout=12_000)
+        page.wait_for_selector("[data-testid='actionsContainer']", timeout=20_000)
     except Exception:
         log.error("actionsContainer not found on profile page")
         return False
@@ -304,6 +304,16 @@ def _open_messaging_for(page: Page, candidate_name: str) -> bool:
 
 def _compose_and_send(page: Page, message: str) -> bool:
     """Fill compose textarea and click Send. Returns True on success."""
+    # Expand docked messaging window if minimized
+    try:
+        docked = page.get_by_test_id("indeed-messaging--docked-header")
+        if docked.count() > 0:
+            docked.click()
+            _pause(0.8, 1.2)
+            log.info("Expanded docked messaging window")
+    except Exception:
+        pass
+
     # Close policy modal if shown
     try:
         close_btn = page.get_by_test_id("messagingPolicyAndTermsModal-closeButton")
