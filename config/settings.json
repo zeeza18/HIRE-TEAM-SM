@@ -2,5 +2,6 @@
   "scheduling_link": "https://calendly.com/rmshomehealth/30min",
   "sender_name": "Ayesha",
   "sender_title": "Assistant Administrator",
-  "company": "Reliable Medical Services"
+  "company": "Reliable Medical Services",
+  "groq_api_key": ""
 }

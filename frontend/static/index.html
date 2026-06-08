@@ -331,6 +331,149 @@
     .mbody::-webkit-scrollbar { width: 6px; }
     .mbody::-webkit-scrollbar-track { background: transparent; }
     .mbody::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 99px; }
+
+    /* ══════════════════════════════════════════
+       VIEW NAV (header buttons)
+    ══════════════════════════════════════════ */
+    .view-nav { display:flex; gap:2px; background:rgba(255,255,255,.12); border-radius:8px; padding:3px; margin-right:4px; }
+    .view-btn { padding:5px 14px; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer; background:transparent; color:rgba(255,255,255,.7); transition:all .15s; }
+    .view-btn:hover { color:white; }
+    .view-btn.active { background:white; color:#1F4E79; }
+
+    /* ══════════════════════════════════════════
+       MESSAGES VIEW
+    ══════════════════════════════════════════ */
+    #messagesView {
+      display: flex;
+      height: calc(100vh - 58px);
+      overflow: hidden;
+      background: #f0f4f8;
+    }
+
+    /* Left panel — conversation list */
+    .conv-left {
+      width: 320px; flex-shrink: 0;
+      background: white; border-right: 1px solid #e2e8f0;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .conv-left-hdr {
+      padding: 12px 16px; border-bottom: 1px solid #e2e8f0;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .conv-left-title { font-size:14px; font-weight:700; color:#1a202c; }
+    .btn-refresh-convs {
+      padding: 5px 12px; border:1.5px solid #1F4E79; border-radius:6px;
+      font-size:11px; font-weight:700; cursor:pointer; color:#1F4E79; background:white;
+      transition:all .15s;
+    }
+    .btn-refresh-convs:hover { background:#1F4E79; color:white; }
+    .btn-refresh-convs:disabled { opacity:.4; cursor:not-allowed; }
+
+    .conv-list { flex:1; overflow-y:auto; }
+    .conv-list::-webkit-scrollbar { width:5px; }
+    .conv-list::-webkit-scrollbar-thumb { background:#cbd5e0; border-radius:99px; }
+
+    .conv-item {
+      padding: 13px 16px; border-bottom: 1px solid #f0f4f8;
+      cursor: pointer; transition: background .1s; border-left: 3px solid transparent;
+    }
+    .conv-item:hover { background:#f7fafc; }
+    .conv-item.active { background:#ebf8ff; border-left-color:#1F4E79; }
+    .ci-name { font-size:13px; font-weight:700; color:#1a202c; margin-bottom:2px; }
+    .ci-job  { font-size:11px; color:#718096; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .ci-prev { font-size:12px; color:#4a5568; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .ci-meta { font-size:11px; color:#a0aec0; margin-top:3px; }
+
+    /* Right panel — thread + reply */
+    .conv-right {
+      flex: 1; display: flex; flex-direction: column; overflow: hidden;
+    }
+    .conv-thread-hdr {
+      background: white; border-bottom: 1px solid #e2e8f0;
+      padding: 14px 20px; flex-shrink: 0;
+    }
+    .conv-thread-name { font-size:16px; font-weight:700; color:#1a202c; }
+    .conv-thread-sub  { font-size:12px; color:#718096; margin-top:2px; }
+
+    .conv-thread-scroll {
+      flex: 1; overflow-y: auto; padding: 20px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .conv-thread-scroll::-webkit-scrollbar { width:5px; }
+    .conv-thread-scroll::-webkit-scrollbar-thumb { background:#cbd5e0; border-radius:99px; }
+
+    .conv-empty {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 10px; color: #a0aec0; font-size: 14px;
+      padding: 60px;
+    }
+
+    .date-sep {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 11px; font-weight: 600; color: #a0aec0;
+      margin: 6px 0; user-select:none;
+    }
+    .date-sep::before, .date-sep::after {
+      content: ''; flex: 1; height: 1px; background: #e2e8f0;
+    }
+
+    .bubble-row { display:flex; flex-direction:column; }
+    .bubble-row.out { align-items:flex-end; }
+    .bubble-row.in  { align-items:flex-start; }
+
+    .bubble {
+      max-width: 72%; padding: 10px 14px; border-radius: 14px;
+      font-size: 13px; line-height: 1.65; white-space: pre-wrap; word-break: break-word;
+    }
+    .bubble.out {
+      background: #1F4E79; color: white;
+      border-bottom-right-radius: 4px;
+    }
+    .bubble.in {
+      background: white; color: #1a202c;
+      border: 1px solid #e2e8f0; border-bottom-left-radius: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    }
+    .bubble-ts { font-size:11px; color:#a0aec0; margin-top:3px; padding:0 4px; }
+
+    /* Reply composer */
+    .conv-reply-box {
+      background: white; border-top: 1px solid #e2e8f0;
+      padding: 14px 20px; flex-shrink: 0;
+    }
+    .conv-reply-ta {
+      width: 100%; height: 90px; border: 1.5px solid #d1d5db; border-radius: 8px;
+      padding: 10px 12px; font-size: 13px; font-family: inherit; resize: vertical;
+      line-height: 1.6; color: #1a202c; margin-bottom: 10px;
+    }
+    .conv-reply-ta:focus { outline:none; border-color:#1F4E79; }
+    .conv-reply-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+
+    .btn-ai-suggest {
+      padding: 7px 16px; border:none; border-radius:7px;
+      font-size:12px; font-weight:700; cursor:pointer;
+      background: #553c9a; color:white; transition:opacity .15s;
+    }
+    .btn-ai-suggest:hover { opacity:.85; }
+    .btn-ai-suggest:disabled { opacity:.4; cursor:not-allowed; }
+
+    .btn-send-conv {
+      padding: 7px 20px; border:none; border-radius:7px;
+      font-size:12px; font-weight:700; cursor:pointer;
+      background: #1F4E79; color:white; transition:opacity .15s;
+    }
+    .btn-send-conv:hover { opacity:.85; }
+    .btn-send-conv:disabled { opacity:.4; cursor:not-allowed; }
+
+    .conv-reply-note { font-size:12px; margin-left:auto; }
+    .conv-reply-note.err { color:#c53030; }
+    .conv-reply-note.ok  { color:#276749; }
+
+    .conv-no-key {
+      background:#FFF5F5; border:1px solid #feb2b2; border-radius:8px;
+      padding:12px 16px; font-size:13px; color:#742a2a; margin-bottom:10px;
+    }
+    .conv-no-key a { color:#c53030; font-weight:700; }
   </style>
 </head>
 <body>
@@ -339,6 +482,10 @@
 <header>
   <h1>Reliable Medical Services Recruiter Portal</h1>
   <div class="header-right">
+    <div class="view-nav">
+      <button class="view-btn active" id="navCandidates" onclick="switchView('candidates')">Candidates</button>
+      <button class="view-btn"        id="navMessages"   onclick="switchView('messages')">Messages</button>
+    </div>
     <div class="live-badge">
       <div class="live-dot" id="liveDot"></div>
       <span id="liveLabel">Live</span>
@@ -360,6 +507,52 @@
 
 <!-- Card grid -->
 <div class="grid" id="grid"></div>
+
+<!-- ══ MESSAGES VIEW ══ -->
+<div id="messagesView" style="display:none">
+
+  <!-- Left: conversation list -->
+  <div class="conv-left">
+    <div class="conv-left-hdr">
+      <span class="conv-left-title">Inbox</span>
+      <button class="btn-refresh-convs" id="btnRefreshConvs" onclick="scrapeConversations()">Refresh</button>
+    </div>
+    <div class="conv-list" id="convList">
+      <div style="padding:28px 16px;color:#a0aec0;font-size:13px;text-align:center;line-height:1.7">
+        Click <strong>Refresh</strong> to load<br>your Indeed conversations.
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: thread view + reply -->
+  <div class="conv-right">
+    <div class="conv-thread-hdr">
+      <div class="conv-thread-name" id="threadTitle">Select a conversation</div>
+      <div class="conv-thread-sub"  id="threadSub"></div>
+    </div>
+
+    <div class="conv-thread-scroll" id="threadScroll">
+      <div class="conv-empty">
+        <i class="lucide-message-circle" style="font-size:48px;color:#e2e8f0"></i>
+        <div>Pick a conversation from the left panel</div>
+      </div>
+    </div>
+
+    <div class="conv-reply-box" id="replyBox" style="display:none">
+      <div class="conv-no-key" id="noKeyWarning" style="display:none">
+        Groq API key not set. Add <code>"groq_api_key"</code> to
+        <strong>config/settings.json</strong> to enable AI replies.
+      </div>
+      <textarea class="conv-reply-ta" id="replyText" placeholder="Write your reply here…"></textarea>
+      <div class="conv-reply-actions">
+        <button class="btn-ai-suggest" id="btnAiReply"  onclick="aiSuggestReply()">AI Suggest Reply</button>
+        <button class="btn-send-conv"  id="btnSendReply" onclick="sendConvReply()">Send Reply</button>
+        <span class="conv-reply-note" id="replyNote"></span>
+      </div>
+    </div>
+  </div>
+
+</div>
 
 <!-- ══ MODAL ══ -->
 <div class="overlay" id="overlay" style="display:none">
@@ -1183,6 +1376,202 @@ document.getElementById('rejectYesBtn').addEventListener('click', async () => {
     btn.textContent = 'Yes, Reject';
   }
 });
+
+/* ═══════════════════════════════════════════════════
+   View switcher (Candidates ↔ Messages)
+═══════════════════════════════════════════════════ */
+let currentView = 'candidates';
+
+const CAND_ELS = () => [
+  document.getElementById('roleTabs'),
+  document.getElementById('newBanner'),
+  document.querySelector('.filter-bar'),
+  document.getElementById('grid'),
+];
+
+function switchView(view) {
+  currentView = view;
+  const isMsgs = view === 'messages';
+
+  CAND_ELS().forEach(el => { if (el) el.style.display = isMsgs ? 'none' : ''; });
+  const mv = document.getElementById('messagesView');
+  mv.style.display = isMsgs ? 'flex' : 'none';
+
+  document.getElementById('navCandidates').classList.toggle('active', !isMsgs);
+  document.getElementById('navMessages').classList.toggle('active',  isMsgs);
+
+  if (isMsgs) loadConversations();
+}
+
+/* ═══════════════════════════════════════════════════
+   Messages — conversation list
+═══════════════════════════════════════════════════ */
+let CONVERSATIONS = [];
+let activeThread  = null;
+
+async function loadConversations() {
+  try {
+    const r = await fetch('/api/conversations');
+    if (r.ok) {
+      CONVERSATIONS = await r.json();
+      renderConvList();
+    }
+  } catch { /* ignore */ }
+}
+
+function renderConvList() {
+  const list = document.getElementById('convList');
+  if (!CONVERSATIONS.length) {
+    list.innerHTML = '<div style="padding:28px 16px;color:#a0aec0;font-size:13px;text-align:center;line-height:1.7">No conversations yet.<br>Click <strong>Refresh</strong> to scrape.</div>';
+    return;
+  }
+  list.innerHTML = CONVERSATIONS.map(c => `
+    <div class="conv-item${activeThread && activeThread.thread_id === c.thread_id ? ' active' : ''}"
+         onclick="openThread('${esc(c.thread_id)}')">
+      <div class="ci-name">${esc(c.candidate_name || '—')}</div>
+      <div class="ci-job">${esc(c.job_info || '')}</div>
+      <div class="ci-prev">${esc(c.last_message_preview || '')}</div>
+      <div class="ci-meta">${esc(c.last_message_timestamp || '')}${c.message_count ? ' · ' + c.message_count + ' messages' : ''}</div>
+    </div>`).join('');
+}
+
+async function openThread(threadId) {
+  try {
+    const r = await fetch(`/api/conversations/${threadId}`);
+    if (!r.ok) return;
+    activeThread = await r.json();
+    renderThread();
+    renderConvList();
+  } catch { /* ignore */ }
+}
+
+function renderThread() {
+  if (!activeThread) return;
+  document.getElementById('threadTitle').textContent = activeThread.candidate_name || '—';
+  document.getElementById('threadSub').textContent   = activeThread.job_info || '';
+
+  const scroll   = document.getElementById('threadScroll');
+  const messages = activeThread.messages || [];
+
+  if (!messages.length) {
+    scroll.innerHTML = '<div class="conv-empty"><div>No messages in this thread yet</div></div>';
+  } else {
+    let html = '', lastDg = '';
+    messages.forEach(msg => {
+      const dg  = msg.date_group || '';
+      if (dg && dg !== lastDg) {
+        html += `<div class="date-sep">${esc(dg)}</div>`;
+        lastDg = dg;
+      }
+      const dir = msg.direction === 'outbound' ? 'out' : 'in';
+      const ts  = msg.timestamp ? `<div class="bubble-ts">${esc(msg.timestamp)}</div>` : '';
+      html += `<div class="bubble-row ${dir}"><div class="bubble ${dir}">${esc(msg.content)}</div>${ts}</div>`;
+    });
+    scroll.innerHTML = html;
+    scroll.scrollTop = scroll.scrollHeight;
+  }
+
+  // Show reply box; check if groq key is set
+  document.getElementById('replyBox').style.display = '';
+  const noKey = document.getElementById('noKeyWarning');
+  noKey.style.display = SETTINGS.groq_api_key ? 'none' : '';
+
+  document.getElementById('replyText').value = '';
+  document.getElementById('replyNote').textContent = '';
+  document.getElementById('replyNote').className = 'conv-reply-note';
+}
+
+async function scrapeConversations() {
+  const btn = document.getElementById('btnRefreshConvs');
+  btn.disabled = true;
+  btn.textContent = 'Scraping…';
+  try {
+    const r    = await fetch('/api/scrape-conversations', { method: 'POST' });
+    const data = await r.json();
+    if (data.ok) {
+      await loadConversations();
+      btn.textContent = `Done (${data.count})`;
+    } else {
+      btn.textContent = 'Error';
+      console.error(data.error);
+    }
+  } catch (e) {
+    btn.textContent = 'Error';
+    console.error(e);
+  }
+  setTimeout(() => { btn.disabled = false; btn.textContent = 'Refresh'; }, 2500);
+}
+
+async function aiSuggestReply() {
+  if (!activeThread) return;
+  const btn  = document.getElementById('btnAiReply');
+  const note = document.getElementById('replyNote');
+  btn.disabled   = true;
+  btn.textContent = 'Thinking…';
+  note.textContent = 'Generating AI reply…';
+  note.className = 'conv-reply-note';
+
+  try {
+    const r    = await fetch('/api/ai-reply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ thread_id: activeThread.thread_id }),
+    });
+    const data = await r.json();
+    if (data.ok) {
+      document.getElementById('replyText').value = data.reply;
+      note.textContent = 'Reply ready — review and send';
+      note.className = 'conv-reply-note ok';
+    } else {
+      const msg = (data.error || '').includes('groq_api_key')
+        ? 'Add groq_api_key to config/settings.json'
+        : `Error: ${(data.error || '').slice(0, 120)}`;
+      note.textContent = msg;
+      note.className = 'conv-reply-note err';
+    }
+  } catch (e) {
+    note.textContent = `Network error: ${e.message}`;
+    note.className = 'conv-reply-note err';
+  }
+  btn.disabled = false;
+  btn.textContent = 'AI Suggest Reply';
+}
+
+async function sendConvReply() {
+  if (!activeThread) return;
+  const message = document.getElementById('replyText').value.trim();
+  if (!message) { alert('Reply cannot be empty.'); return; }
+
+  const btn  = document.getElementById('btnSendReply');
+  const note = document.getElementById('replyNote');
+  btn.disabled   = true;
+  btn.textContent = 'Sending…';
+  note.textContent = 'Opening Indeed (~20 sec)…';
+  note.className = 'conv-reply-note';
+
+  try {
+    const r    = await fetch('/api/send-conversation-reply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ thread_id: activeThread.thread_id, message }),
+    });
+    const data = await r.json();
+    if (data.ok) {
+      note.textContent = 'Sent!';
+      note.className = 'conv-reply-note ok';
+      document.getElementById('replyText').value = '';
+      await openThread(activeThread.thread_id);
+    } else {
+      note.textContent = `Error: ${(data.error || '').slice(0, 160)}`;
+      note.className = 'conv-reply-note err';
+    }
+  } catch (e) {
+    note.textContent = `Network error: ${e.message}`;
+    note.className = 'conv-reply-note err';
+  }
+  btn.disabled = false;
+  btn.textContent = 'Send Reply';
+}
 
 /* ═══════════════════════════════════════════════════
    Boot + poll every 20s

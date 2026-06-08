@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from flask import Flask, jsonify, request, send_from_directory
 from werkzeug.exceptions import HTTPException
-from scraper.utils import CANDIDATES_DIR, load_status_counts
+from scraper.utils import CANDIDATES_DIR, DATA_DIR, load_status_counts
 
 app = Flask(__name__, static_folder="static")
 RESUMES_DIR = CANDIDATES_DIR.parent / "resumes"
@@ -149,6 +149,69 @@ def api_schedule_interview():
         return jsonify({"ok": False, "error": "candidate_id and interview_date are required"}), 400
     try:
         result = _messenger.schedule_interview(cid, message, date, time_str, duration=duration, format_=fmt)
+        return jsonify(result), (200 if result.get("ok") else 500)
+    except Exception:
+        return jsonify({"ok": False, "error": traceback.format_exc()}), 500
+
+
+@app.route("/api/conversations")
+def api_conversations():
+    index_path = DATA_DIR / "conversations" / "index.json"
+    if index_path.exists():
+        return jsonify(json.loads(index_path.read_text(encoding="utf-8")))
+    return jsonify([])
+
+
+@app.route("/api/conversations/<thread_id>")
+def api_conversation(thread_id):
+    conv_path = DATA_DIR / "conversations" / f"{thread_id}.json"
+    if not conv_path.exists():
+        return jsonify({"error": "not found"}), 404
+    return jsonify(json.loads(conv_path.read_text(encoding="utf-8")))
+
+
+@app.route("/api/scrape-conversations", methods=["POST"])
+def api_scrape_conversations():
+    if _MESSENGER_ERROR:
+        return jsonify({"ok": False, "error": _MESSENGER_ERROR}), 500
+    try:
+        import scraper.conversations_scraper as _conv
+        threads = _conv.scrape()
+        return jsonify({"ok": True, "count": len(threads)})
+    except Exception:
+        return jsonify({"ok": False, "error": traceback.format_exc()}), 500
+
+
+@app.route("/api/ai-reply", methods=["POST"])
+def api_ai_reply():
+    body      = request.get_json(silent=True) or {}
+    thread_id = (body.get("thread_id") or "").strip()
+    if not thread_id:
+        return jsonify({"ok": False, "error": "thread_id required"}), 400
+    conv_path = DATA_DIR / "conversations" / f"{thread_id}.json"
+    if not conv_path.exists():
+        return jsonify({"ok": False, "error": "Thread not found — scrape first"}), 404
+    try:
+        thread = json.loads(conv_path.read_text(encoding="utf-8"))
+        from scraper.ai_responder import generate_reply
+        reply = generate_reply(thread)
+        return jsonify({"ok": True, "reply": reply})
+    except Exception:
+        return jsonify({"ok": False, "error": traceback.format_exc()}), 500
+
+
+@app.route("/api/send-conversation-reply", methods=["POST"])
+def api_send_conversation_reply():
+    if _MESSENGER_ERROR:
+        return jsonify({"ok": False, "error": _MESSENGER_ERROR}), 500
+    body      = request.get_json(silent=True) or {}
+    thread_id = (body.get("thread_id") or "").strip()
+    message   = (body.get("message")   or "").strip()
+    if not thread_id or not message:
+        return jsonify({"ok": False, "error": "thread_id and message required"}), 400
+    try:
+        from scraper.conversations_scraper import send_reply
+        result = send_reply(thread_id, message)
         return jsonify(result), (200 if result.get("ok") else 500)
     except Exception:
         return jsonify({"ok": False, "error": traceback.format_exc()}), 500
