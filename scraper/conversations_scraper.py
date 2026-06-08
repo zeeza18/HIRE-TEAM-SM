@@ -192,16 +192,20 @@ def scrape(max_threads: int = 50) -> list:
             browser.close()
             return []
 
-        options = page.get_by_role("option").all()
-        log.info(f"Found {len(options)} conversation(s)")
+        total = page.get_by_role("option").count()
+        count = min(total, max_threads)
+        log.info(f"Found {total} conversation(s)")
 
         threads = []
         index   = []
 
-        for i, opt in enumerate(options[:max_threads]):
+        for i in range(count):
             try:
-                option_text = opt.inner_text()
-                log.info(f"[{i+1}/{min(len(options), max_threads)}] {option_text[:80].strip()}")
+                _pause(0.4, 0.8)   # let list settle after previous click
+                # Re-query each time — the list re-renders after every click
+                opt = page.get_by_role("option").nth(i)
+                option_text = opt.inner_text(timeout=8_000)
+                log.info(f"[{i+1}/{count}] {option_text[:80].strip()}")
 
                 opt.click()
                 _pause(1.5, 2.5)
