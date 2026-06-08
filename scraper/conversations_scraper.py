@@ -182,15 +182,26 @@ def scrape(max_threads: int = 50) -> list:
 
         log.info("Loading messages page…")
         _open_messages_page(page)
-        snap(page, "01_loaded")
 
+        # Wait for the list container, then wait for at least one option to render
         try:
             page.wait_for_selector("#indeed-messaging--conversation-list-div", timeout=15_000)
         except Exception:
             snap(page, "01_no_list")
-            log.error("Conversation list not found")
+            log.error("Conversation list container not found")
             browser.close()
             return []
+
+        try:
+            page.wait_for_selector('[role="option"]', timeout=15_000)
+        except Exception:
+            snap(page, "01_no_options")
+            log.error("No conversation options rendered — see screenshot")
+            browser.close()
+            return []
+
+        _pause(0.5, 1.0)   # let full list paint
+        snap(page, "01_list_ready")
 
         total = page.get_by_role("option").count()
         count = min(total, max_threads)
