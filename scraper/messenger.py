@@ -195,125 +195,110 @@ def _navigate_to_all_candidates(page: Page, job_id: str, job_title: str) -> bool
 
 def _open_messaging_from_profile(page: Page, profile_url: str, full_name: str) -> bool:
     """
-    Navigate to the candidate's profile URL (which loads the list with the
-    correct filter — including Rejected — in the left panel), then use the
-    standard More Actions → send-new-message flow on that row.
+    Navigate directly to the candidate's profile URL and open messaging
+    via actionsContainer (...) → send-new-message on the profile panel.
     """
     page.goto(profile_url, wait_until="domcontentloaded", timeout=30_000)
     _pause(2.0, 3.5)
     _dismiss_popup(page)
 
     try:
-        page.wait_for_selector("[data-testid='candidate-list-table-container']", timeout=15_000)
+        page.wait_for_selector("[data-testid='actionsContainer']", timeout=12_000)
     except Exception:
-        log.error("Candidate list panel not found on profile page")
+        log.error("actionsContainer not found on profile page")
         return False
 
-    log.info(f"Profile page loaded with list panel — searching for {full_name!r}")
-    return _open_messaging_for(page, full_name)
+    # Minimize any open messaging windows
+    for _ in range(3):
+        try:
+            min_btn = page.get_by_role(
+                "button", name=re.compile(r"Minimize messaging with", re.I)
+            )
+            if min_btn.count() > 0:
+                min_btn.first.click()
+                _pause(0.3, 0.5)
+            else:
+                break
+        except Exception:
+            break
+
+    page.get_by_test_id("actionsContainer").first.click()
+    _pause(0.5, 0.9)
+
+    for attempt in range(2):
+        btn = page.get_by_test_id("send-new-message")
+        if btn.count() > 0:
+            btn.click()
+            _pause(1.0, 1.8)
+            # Expand docked messaging window if minimized
+            try:
+                docked = page.get_by_test_id("indeed-messaging--docked-header")
+                if docked.count() > 0:
+                    docked.click()
+                    _pause(0.8, 1.2)
+            except Exception:
+                pass
+            return True
+        if attempt == 0:
+            page.get_by_test_id("actionsContainer").first.click()
+            _pause(0.5, 0.8)
+
+    log.error("send-new-message not found after clicking actionsContainer")
+    return False
 
 
 def _open_messaging_for(page: Page, candidate_name: str) -> bool:
     """
-    Paginate through candidate list, hover over the matching row,
-    click More Actions → send-new-message. Returns True on success.
+    Find candidate by name link, click it, then open More Actions → send-new-message.
+    Returns True on success.
     """
-    page_num = 0
-    while True:
-        page_num += 1
-        rows = page.locator(
-            "[data-testid='candidate-list-table-container'] [role='row']"
-        ).all()
+    # Wait for candidate link to appear
+    try:
+        page.wait_for_selector(f"a:has-text('{candidate_name}')", timeout=10_000)
+    except Exception:
+        pass
 
-        for row in rows:
-            try:
-                text = row.inner_text().strip()
-            except Exception:
-                continue
-            if candidate_name.lower() not in text.lower():
-                continue
+    cand_link = page.get_by_role("link", name=candidate_name)
+    if cand_link.count() == 0:
+        log.error(f"{candidate_name!r} link not found in candidate list")
+        return False
 
-            # Hover to reveal More Actions
-            try:
-                row.hover()
-                _pause(0.4, 0.7)
-            except Exception:
-                pass
+    cand_link.first.click()
+    _pause(1.5, 2.5)
 
-            # Click More Actions cell
-            clicked = False
-            for try_loc in [
-                lambda r: r.get_by_role("cell", name="More Actions"),
-                lambda r: r.locator("[data-testid='actionsContainer']"),
-            ]:
-                try:
-                    el = try_loc(row)
-                    if el.count() > 0:
-                        el.first.click()
-                        clicked = True
-                        break
-                except Exception:
-                    continue
-
-            if not clicked:
-                # Last resort: click last cell of the row
-                try:
-                    cells = row.locator("td").all()
-                    if cells:
-                        cells[-1].click()
-                        clicked = True
-                except Exception:
-                    pass
-
-            if not clicked:
-                log.error(f"Could not click More Actions for {candidate_name!r}")
-                return False
-
-            _pause(0.5, 0.9)
-
-            # Minimize any open messaging windows
-            for _ in range(3):
-                try:
-                    min_btn = page.get_by_role(
-                        "button", name=re.compile(r"Minimize messaging with", re.I)
-                    )
-                    if min_btn.count() > 0:
-                        min_btn.first.click()
-                        _pause(0.3, 0.5)
-                    else:
-                        break
-                except Exception:
-                    break
-
-            # Click send-new-message
-            for attempt in range(2):
-                try:
-                    btn = page.get_by_test_id("send-new-message")
-                    if btn.count() > 0:
-                        btn.click()
-                        _pause(1.0, 1.8)
-                        return True
-                    if attempt == 0:
-                        try:
-                            page.locator("[data-testid='actionsContainer']").first.click()
-                            _pause(0.5, 0.8)
-                        except Exception:
-                            pass
-                except Exception:
-                    pass
-
-            log.error("send-new-message button not found after clicking More Actions")
-            return False
-
-        # Next page
-        next_btn = page.locator("button:has-text('Next'), a:has-text('Next')").last
-        if next_btn.count() > 0 and next_btn.is_enabled():
-            next_btn.click()
-            _pause(2.0, 3.0)
-        else:
+    # Minimize any open messaging windows
+    for _ in range(3):
+        try:
+            min_btn = page.get_by_role(
+                "button", name=re.compile(r"Minimize messaging with", re.I)
+            )
+            if min_btn.count() > 0:
+                min_btn.first.click()
+                _pause(0.3, 0.5)
+            else:
+                break
+        except Exception:
             break
 
-    log.error(f"{candidate_name!r} not found in list after {page_num} page(s)")
+    # Click actionsContainer → send-new-message
+    actions = page.get_by_test_id("actionsContainer")
+    if actions.count() == 0:
+        log.error("actionsContainer not found after clicking candidate")
+        return False
+    actions.first.click()
+    _pause(0.5, 0.9)
+
+    for attempt in range(2):
+        btn = page.get_by_test_id("send-new-message")
+        if btn.count() > 0:
+            btn.click()
+            _pause(1.0, 1.8)
+            return True
+        if attempt == 0:
+            actions.first.click()
+            _pause(0.5, 0.8)
+
+    log.error("send-new-message not found after clicking actionsContainer")
     return False
 
 
@@ -343,23 +328,11 @@ def _compose_and_send(page: Page, message: str) -> bool:
     ta.fill(message)
     _pause(0.5, 0.9)
 
-    # Try Send div (nth(1) from codegen, then fallback options)
-    for nth in [1, 2, 0]:
-        try:
-            send_el = page.locator("div").filter(
-                has_text=re.compile(r"^Send$")
-            ).nth(nth)
-            if send_el.count() > 0:
-                send_el.click()
-                _pause(1.0, 1.5)
-                return True
-        except Exception:
-            pass
-
+    # Primary: ComposeBox send button (from codegen)
     try:
-        btn = page.get_by_role("button", name=re.compile(r"^Send$"))
-        if btn.count() > 0:
-            btn.first.click()
+        send = page.get_by_test_id("indeed-messaging--ComposeBox__sendButton")
+        if send.count() > 0:
+            send.click()
             _pause(1.0, 1.5)
             return True
     except Exception:

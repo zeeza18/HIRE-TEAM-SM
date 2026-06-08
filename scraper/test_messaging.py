@@ -1,9 +1,9 @@
 """
-Test messaging flow: navigates to a candidate's profile URL, opens the
-More Actions → New Message panel, fills in the outreach message, and sends it.
+Test messaging flow: navigates directly to the candidate's profile URL,
+clicks More Actions (actionsContainer / ...) → New Message, fills the
+message, and sends it.
 
 Sender: Ayesha, Assistant Administrator at Reliable Medical Services.
-Message: asks candidate for the best time and number to reach them.
 
 Usage:
     python scraper/test_messaging.py
@@ -22,7 +22,7 @@ from scraper.utils import SESSION_STATE_FILE, CANDIDATES_DIR, CONFIG_DIR, get_lo
 
 log = get_logger("test_messaging")
 
-CANDIDATE_ID = "indeed-50bda6094469"   # SHIFA FARHEEN
+CANDIDATE_ID = "indeed-31a1985d7e29"   # VERSATILE (test account)
 
 SETTINGS_FILE = CONFIG_DIR / "settings.json"
 
@@ -67,7 +67,6 @@ def snap(page, name: str):
 
 
 def run():
-    # Find candidate file
     candidate_file = None
     for f in sorted(CANDIDATES_DIR.glob(f"{CANDIDATE_ID}*.json")):
         candidate_file = f
@@ -76,9 +75,12 @@ def run():
         log.error(f"No file found for {CANDIDATE_ID}")
         return
 
-    data = load_json(candidate_file, {})
+    data        = load_json(candidate_file, {})
     full_name   = data.get("full_name", "")
+    job_title   = data.get("job_title", "Administrator")
     profile_url = data.get("indeed_profile_url", "")
+    first_name  = full_name.split()[0]
+    MESSAGE     = _build_message(first_name, job_title)
 
     if not profile_url:
         log.error("No indeed_profile_url in candidate file")
@@ -87,11 +89,7 @@ def run():
         log.error("No session. Run: python scraper/indeed_login.py")
         return
 
-    first_name = full_name.split()[0]
-    role       = data.get("job_title", "Administrator")
-    MESSAGE    = _build_message(first_name, role)
-
-    log.info(f"Sending message to {full_name} via profile URL...")
+    log.info(f"Sending message to {full_name}...")
     log.info(f"Message preview:\n{MESSAGE[:120]}...")
 
     with sync_playwright() as p:
@@ -124,80 +122,16 @@ def run():
 
         snap(page, "01_profile_loaded")
 
-        # ── 2. Wait for candidate list panel ──────────────────────────────────
+        # ── 2. Wait for profile to be interactive ─────────────────────────────
         try:
-            page.wait_for_selector(
-                "[data-testid='candidate-list-table-container']", timeout=15_000
-            )
-            log.info("Candidate list panel found")
+            page.wait_for_selector("[data-testid='actionsContainer']", timeout=12_000)
         except Exception:
-            snap(page, "02_no_list_panel")
-            log.error("Candidate list panel not found — see screenshot")
+            snap(page, "02_no_actions")
+            log.error("actionsContainer not found on profile — see screenshot")
             browser.close()
             return
 
-        snap(page, "02_list_panel_ready")
-
-        # ── 3. Find and hover the candidate row ───────────────────────────────
-        rows = page.locator(
-            "[data-testid='candidate-list-table-container'] [role='row']"
-        ).all()
-
-        target_row = None
-        for row in rows:
-            try:
-                if full_name.lower() in row.inner_text().lower():
-                    target_row = row
-                    break
-            except Exception:
-                continue
-
-        if target_row is None:
-            snap(page, "03_candidate_not_in_list")
-            log.error(f"{full_name!r} not found in candidate list — see screenshot")
-            browser.close()
-            return
-
-        log.info(f"Found row for {full_name!r} — hovering...")
-        target_row.hover()
-        _pause(0.5, 0.9)
-        snap(page, "03_row_hovered")
-
-        # ── 4. Click More Actions ─────────────────────────────────────────────
-        clicked_actions = False
-        for try_loc in [
-            lambda r: r.get_by_role("cell", name="More Actions"),
-            lambda r: r.locator("[data-testid='actionsContainer']"),
-        ]:
-            try:
-                el = try_loc(target_row)
-                if el.count() > 0:
-                    el.first.click()
-                    clicked_actions = True
-                    break
-            except Exception:
-                continue
-
-        if not clicked_actions:
-            # Last resort: last cell in row
-            try:
-                cells = target_row.locator("td").all()
-                if cells:
-                    cells[-1].click()
-                    clicked_actions = True
-            except Exception:
-                pass
-
-        if not clicked_actions:
-            snap(page, "04_no_more_actions")
-            log.error("Could not click More Actions — see screenshot")
-            browser.close()
-            return
-
-        _pause(0.5, 0.9)
-        snap(page, "04_more_actions_clicked")
-
-        # ── 5. Minimize any open messaging windows ────────────────────────────
+        # ── 3. Minimize any open messaging windows ────────────────────────────
         for _ in range(3):
             try:
                 min_btn = page.get_by_role(
@@ -211,35 +145,33 @@ def run():
             except Exception:
                 break
 
-        # ── 6. Click send-new-message ─────────────────────────────────────────
-        opened = False
-        for attempt in range(2):
-            try:
-                btn = page.get_by_test_id("send-new-message")
-                if btn.count() > 0:
-                    btn.click()
-                    _pause(1.2, 2.0)
-                    opened = True
-                    break
-                if attempt == 0:
-                    # Re-open the actions menu and try again
-                    try:
-                        page.locator("[data-testid='actionsContainer']").first.click()
-                        _pause(0.5, 0.9)
-                    except Exception:
-                        pass
-            except Exception:
-                pass
+        # ── 4. Click actionsContainer (... More Actions) ──────────────────────
+        page.get_by_test_id("actionsContainer").first.click()
+        _pause(0.5, 0.9)
+        snap(page, "02_actions_open")
 
-        if not opened:
-            snap(page, "05_no_send_new_message")
-            log.error("send-new-message button not found — see screenshot")
+        # ── 5. Click send-new-message ─────────────────────────────────────────
+        send_new = page.get_by_test_id("send-new-message")
+        if send_new.count() == 0:
+            snap(page, "03_no_send_new_message")
+            log.error("send-new-message not found — see screenshot")
             browser.close()
             return
+        send_new.click()
+        _pause(1.2, 2.0)
+        snap(page, "03_compose_opened")
 
-        snap(page, "05_compose_opened")
+        # ── 6. Expand docked messaging window if minimized ────────────────────
+        try:
+            docked = page.get_by_test_id("indeed-messaging--docked-header")
+            if docked.count() > 0:
+                docked.click()
+                _pause(0.8, 1.2)
+                log.info("Expanded docked messaging window")
+        except Exception:
+            pass
 
-        # ── 7. Close policy modal if shown ────────────────────────────────────
+        # Close policy modal if shown
         try:
             close_btn = page.get_by_test_id("messagingPolicyAndTermsModal-closeButton")
             if close_btn.count() > 0:
@@ -248,14 +180,16 @@ def run():
         except Exception:
             pass
 
-        # ── 8. Fill compose textarea ──────────────────────────────────────────
+        snap(page, "03b_after_expand")
+
+        # ── 7. Fill compose textarea ──────────────────────────────────────────
         try:
             page.wait_for_selector(
                 "[data-testid='indeed-messaging--compose-message-textarea']",
                 timeout=10_000,
             )
         except Exception:
-            snap(page, "06_no_compose_textarea")
+            snap(page, "04_no_textarea")
             log.error("Compose textarea not found — see screenshot")
             browser.close()
             return
@@ -265,39 +199,20 @@ def run():
         ta.press("Control+A")
         ta.fill(MESSAGE)
         _pause(0.8, 1.2)
-        snap(page, "06_message_typed")
+        snap(page, "04_message_typed")
 
-        # ── 9. Click Send ─────────────────────────────────────────────────────
-        sent = False
-        for nth in [1, 2, 0]:
-            try:
-                send_el = page.locator("div").filter(
-                    has_text=re.compile(r"^Send$")
-                ).nth(nth)
-                if send_el.count() > 0:
-                    send_el.click()
-                    _pause(1.2, 1.8)
-                    sent = True
-                    break
-            except Exception:
-                pass
+        # ── 8. Click Send ─────────────────────────────────────────────────────
+        send = page.get_by_test_id("indeed-messaging--ComposeBox__sendButton")
+        if send.count() == 0:
+            snap(page, "05_no_send_button")
+            log.error("Send button not found — see screenshot")
+            browser.close()
+            return
 
-        if not sent:
-            try:
-                btn = page.get_by_role("button", name=re.compile(r"^Send$"))
-                if btn.count() > 0:
-                    btn.first.click()
-                    _pause(1.2, 1.8)
-                    sent = True
-            except Exception:
-                pass
-
-        snap(page, "07_after_send")
-
-        if sent:
-            log.info(f"Message sent to {full_name}!")
-        else:
-            log.error("Could not find Send button — message may not have sent, check screenshot")
+        send.click()
+        _pause(1.2, 1.8)
+        snap(page, "05_after_send")
+        log.info(f"Message sent to {full_name}!")
 
         browser.close()
 
