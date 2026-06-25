@@ -145,6 +145,7 @@
     .st-interviewing { background: #DDEBF7; color: #1a3a5c; }
     .st-hired        { background: #C6EFCE; color: #1e5631; }
     .st-rejected     { background: #FFCCCC; color: #7d1515; }
+    .st-withdrawn    { background: #E5E5E5; color: #595959; }
 
     .card-actions { display: flex; gap: 6px; padding-top: 10px; border-top: 1px solid #f7fafc; }
     .act-btn {
@@ -181,6 +182,34 @@
       display: flex; flex-direction: column; overflow: hidden;
       box-shadow: 0 20px 60px rgba(0,0,0,.4);
     }
+
+    /* job info icon + popup */
+    .role-tab { position: relative; }
+    .role-info-ic {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #cbd5e0; color: white; font-size: 11px; font-style: italic;
+      font-family: Georgia, serif; margin-left: 6px; cursor: pointer;
+    }
+    .role-info-ic:hover { background: #1F4E79; }
+    .job-info-modal {
+      background: white; border-radius: 12px;
+      width: 100%; max-width: 640px; max-height: 85vh;
+      display: flex; flex-direction: column; overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,.4);
+    }
+    .job-info-hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid #e2e8f0;
+    }
+    .job-info-hdr h3 { margin: 0; font-size: 16px; color: #1a202c; }
+    .job-info-hdr .sub { font-size: 12px; color: #718096; margin-top: 2px; }
+    .job-info-body { padding: 16px 20px; overflow-y: auto; }
+    .job-info-body h4 { font-size: 13px; color: #1F4E79; margin: 16px 0 6px; }
+    .job-info-body h4:first-child { margin-top: 0; }
+    .job-info-body p { font-size: 13px; color: #2d3748; white-space: pre-wrap; line-height: 1.5; }
+    .req-item { font-size: 13px; color: #2d3748; padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
+    .req-item .req-max { color: #718096; font-size: 11px; }
 
     /* modal header */
     .mhdr {
@@ -256,8 +285,31 @@
     .c-zero  { color: #a0aec0; }
     .c-full  { color: #276749; }
     .c-part  { color: #975a16; }
-    .evid    { font-style: italic; color: #4a5568; font-size: 12px; }
-    .no-evid { color: #cbd5e0; font-size: 12px; }
+    .evid         { font-style: italic; color: #4a5568; font-size: 12px; }
+    .no-evid      { color: #a0aec0; font-size: 12px; }
+    .partial-reason { color: #975a16; font-size: 11px; margin-top: 3px; }
+    /* reasoning tooltip */
+    .info-wrap { position: relative; display: inline-block; margin-left: 5px; vertical-align: middle; }
+    .info-icon {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 15px; height: 15px; border-radius: 50%;
+      background: #e2e8f0; color: #718096;
+      font-size: 10px; font-weight: 700; font-style: normal; cursor: default;
+      user-select: none;
+    }
+    .info-tip {
+      display: none; position: absolute; z-index: 999;
+      bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+      background: #2d3748; color: #fff; font-size: 12px; font-style: normal;
+      padding: 7px 10px; border-radius: 6px; white-space: normal;
+      width: 240px; line-height: 1.5; pointer-events: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,.25);
+    }
+    .info-tip::after {
+      content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+      border: 5px solid transparent; border-top-color: #2d3748;
+    }
+    .info-wrap:hover .info-tip { display: block; }
 
     /* profile sections */
     .psec { margin-bottom: 18px; }
@@ -327,6 +379,85 @@
     .sch-send:hover { opacity:.85; }
     .sch-send:disabled { opacity:.45;cursor:not-allowed; }
 
+    /* ══════════════════════════════════════════
+       COMPANY SELECT OVERLAY
+    ══════════════════════════════════════════ */
+    #loginOverlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: linear-gradient(135deg, #0f2942 0%, #1a3a5c 50%, #1F4E79 100%);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 32px;
+    }
+    .co-select-hdr { text-align: center; }
+    .co-select-hdr h1 {
+      font-size: 26px; font-weight: 800; color: white; margin-bottom: 6px; letter-spacing: -.3px;
+    }
+    .co-select-hdr p { font-size: 14px; color: rgba(255,255,255,.6); }
+
+    .co-cards {
+      display: flex; gap: 24px; flex-wrap: wrap; justify-content: center;
+    }
+    .co-card {
+      background: white; border-radius: 16px;
+      width: 220px; padding: 36px 28px 30px;
+      display: flex; flex-direction: column; align-items: center; gap: 14px;
+      cursor: pointer; box-shadow: 0 8px 40px rgba(0,0,0,.35);
+      transition: transform .18s, box-shadow .18s; position: relative; overflow: hidden;
+    }
+    .co-card:hover { transform: translateY(-5px); box-shadow: 0 18px 50px rgba(0,0,0,.45); }
+    .co-card:active { transform: translateY(-2px); }
+    .co-card-icon {
+      width: 64px; height: 64px; border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; font-weight: 900; color: white;
+    }
+    .co-card-name {
+      font-size: 15px; font-weight: 800; color: #1a202c;
+      text-align: center; line-height: 1.3;
+    }
+    .co-card-sub {
+      font-size: 11px; color: #718096; text-align: center; line-height: 1.5;
+    }
+    .co-card-status {
+      font-size: 11px; font-weight: 700; padding: 3px 10px;
+      border-radius: 99px; margin-top: 4px;
+    }
+    .co-status-ready  { background: #C6EFCE; color: #1e5631; }
+    .co-status-setup  { background: #FFF2CC; color: #7d5a0a; }
+    .co-card-loading {
+      position: absolute; inset: 0; background: rgba(255,255,255,.88);
+      display: none; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: #1F4E79; border-radius: 16px;
+    }
+    /* company badge in header */
+    .co-badge {
+      font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 99px;
+      background: rgba(255,255,255,.18); color: white; letter-spacing: .3px;
+    }
+    .btn-logout {
+      padding: 5px 13px; border: 1.5px solid rgba(255,255,255,.4); border-radius: 6px;
+      background: transparent; color: white; font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: all .15s;
+    }
+    .btn-logout:hover { background: rgba(255,255,255,.15); }
+
+    /* ══════════════════════════════════════════
+       POST JOB
+    ══════════════════════════════════════════ */
+    .pj-lbl {
+      font-size: 11px; font-weight: 700; color: #4a5568;
+      text-transform: uppercase; letter-spacing: .5px;
+      display: block; margin-bottom: 6px;
+    }
+    .pj-check-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 13px; border: 1.5px solid #d1d5db; border-radius: 99px;
+      font-size: 12px; font-weight: 600; color: #374151; cursor: pointer;
+      user-select: none; transition: all .12s;
+    }
+    .pj-check-pill:hover { border-color: #1F4E79; color: #1F4E79; }
+    .pj-check-pill input[type=checkbox] { accent-color: #1F4E79; }
+
     /* scrollbar */
     .mbody::-webkit-scrollbar { width: 6px; }
     .mbody::-webkit-scrollbar-track { background: transparent; }
@@ -336,9 +467,11 @@
        VIEW NAV (header buttons)
     ══════════════════════════════════════════ */
     .view-nav { display:flex; gap:2px; background:rgba(255,255,255,.12); border-radius:8px; padding:3px; margin-right:4px; }
-    .view-btn { padding:5px 14px; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer; background:transparent; color:rgba(255,255,255,.7); transition:all .15s; }
+    .view-btn { padding:5px 14px; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer; background:transparent; color:rgba(255,255,255,.7); transition:all .15s; display:flex; align-items:center; gap:6px; }
     .view-btn:hover { color:white; }
     .view-btn.active { background:white; color:#1F4E79; }
+    .conv-badge { display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; padding:0 5px; border-radius:99px; font-size:10px; font-weight:800; background:rgba(255,255,255,.25); color:white; line-height:1; }
+    .view-btn.active .conv-badge { background:#1F4E79; color:white; }
 
     /* ══════════════════════════════════════════
        MESSAGES VIEW
@@ -361,13 +494,28 @@
       display: flex; align-items: center; justify-content: space-between;
     }
     .conv-left-title { font-size:14px; font-weight:700; color:#1a202c; }
-    .btn-refresh-convs {
-      padding: 5px 12px; border:1.5px solid #1F4E79; border-radius:6px;
-      font-size:11px; font-weight:700; cursor:pointer; color:#1F4E79; background:white;
-      transition:all .15s;
+    /* live sync controls */
+    .sync-ctl { display:flex; align-items:center; gap:7px; }
+    .sync-dot-live {
+      width:7px; height:7px; border-radius:50%; background:#68d391; flex-shrink:0;
+      animation: pulse 2s infinite;
     }
-    .btn-refresh-convs:hover { background:#1F4E79; color:white; }
-    .btn-refresh-convs:disabled { opacity:.4; cursor:not-allowed; }
+    .sync-dot-live.busy  { background:#f6ad55; animation:pulse .8s infinite; }
+    .sync-dot-live.err   { background:#fc8181; animation:none; }
+    .sync-dot-live.idle  { background:#cbd5e0; animation:none; }
+    .sync-age { font-size:11px; color:#718096; white-space:nowrap; }
+    .btn-sync-now {
+      padding:4px 11px; border:1.5px solid #cbd5e0; border-radius:6px;
+      font-size:11px; font-weight:700; cursor:pointer; background:white; color:#4a5568;
+      transition:all .15s; white-space:nowrap;
+    }
+    .btn-sync-now:hover    { border-color:#1F4E79; color:#1F4E79; }
+    .btn-sync-now:disabled { opacity:.4; cursor:not-allowed; }
+    .new-msg-pill {
+      display:inline-flex; align-items:center;
+      font-size:10px; font-weight:800; color:white; background:#c05621;
+      padding:1px 7px; border-radius:99px; margin-left:6px; animation:fadeUp .3s ease;
+    }
 
     .conv-list { flex:1; overflow-y:auto; }
     .conv-list::-webkit-scrollbar { width:5px; }
@@ -379,7 +527,8 @@
     }
     .conv-item:hover { background:#f7fafc; }
     .conv-item.active { background:#ebf8ff; border-left-color:#1F4E79; }
-    .ci-name { font-size:13px; font-weight:700; color:#1a202c; margin-bottom:2px; }
+    .ci-name { font-size:13px; font-weight:700; color:#1a202c; margin-bottom:2px; display:flex; align-items:center; gap:6px; }
+    .ci-auto-badge { font-size:10px; font-weight:800; background:#6b46c1; color:white; padding:1px 6px; border-radius:99px; white-space:nowrap; }
     .ci-job  { font-size:11px; color:#718096; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .ci-prev { font-size:12px; color:#4a5568; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .ci-meta { font-size:11px; color:#a0aec0; margin-top:3px; }
@@ -435,6 +584,7 @@
       box-shadow: 0 1px 3px rgba(0,0,0,.06);
     }
     .bubble-ts { font-size:11px; color:#a0aec0; margin-top:3px; padding:0 4px; }
+    .bubble-sender { font-size:10px; font-weight:700; color:#718096; margin-bottom:2px; padding:0 4px; }
 
     /* Reply composer */
     .conv-reply-box {
@@ -449,15 +599,7 @@
     .conv-reply-ta:focus { outline:none; border-color:#1F4E79; }
     .conv-reply-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 
-    .btn-ai-suggest {
-      padding: 7px 16px; border:none; border-radius:7px;
-      font-size:12px; font-weight:700; cursor:pointer;
-      background: #553c9a; color:white; transition:opacity .15s;
-    }
-    .btn-ai-suggest:hover { opacity:.85; }
-    .btn-ai-suggest:disabled { opacity:.4; cursor:not-allowed; }
-
-    .btn-send-conv {
+.btn-send-conv {
       padding: 7px 20px; border:none; border-radius:7px;
       font-size:12px; font-weight:700; cursor:pointer;
       background: #1F4E79; color:white; transition:opacity .15s;
@@ -469,27 +611,80 @@
     .conv-reply-note.err { color:#c53030; }
     .conv-reply-note.ok  { color:#276749; }
 
-    .conv-no-key {
-      background:#FFF5F5; border:1px solid #feb2b2; border-radius:8px;
-      padding:12px 16px; font-size:13px; color:#742a2a; margin-bottom:10px;
-    }
-    .conv-no-key a { color:#c53030; font-weight:700; }
   </style>
 </head>
 <body>
 
+<!-- ══ COMPANY SELECT OVERLAY ══ -->
+<div id="loginOverlay">
+  <div class="co-select-hdr">
+    <h1>Recruiter Portal</h1>
+    <p>Select your company to open the portal</p>
+  </div>
+  <div class="co-cards">
+
+    <!-- Reliable Medical Services -->
+    <div class="co-card" id="card-rms" onclick="selectCompany('rms')">
+      <div class="co-card-loading" id="loading-rms">
+        <div style="text-align:center">
+          <div id="loading-rms-msg">Opening…</div>
+          <button id="loading-rms-cancel" onclick="event.stopPropagation();cancelLogin('rms')" style="display:none;font-size:11px;margin-top:10px;padding:3px 12px;border:1.5px solid #1F4E79;border-radius:5px;cursor:pointer;background:white;color:#1F4E79;">Cancel</button>
+        </div>
+      </div>
+      <div class="co-card-icon" style="background:linear-gradient(135deg,#1F4E79,#2d6ba4)">RMS</div>
+      <div class="co-card-name">Reliable Medical Services</div>
+      <div class="co-card-sub">Home Health Care<br>Lombard, IL</div>
+      <div class="co-card-status" id="status-rms">Loading…</div>
+    </div>
+
+    <!-- Speech Masters -->
+    <div class="co-card" id="card-sm" onclick="selectCompany('sm')">
+      <div class="co-card-loading" id="loading-sm">
+        <div style="text-align:center">
+          <div id="loading-sm-msg">Opening…</div>
+          <button id="loading-sm-cancel" onclick="event.stopPropagation();cancelLogin('sm')" style="display:none;font-size:11px;margin-top:10px;padding:3px 12px;border:1.5px solid #553c9a;border-radius:5px;cursor:pointer;background:white;color:#553c9a;">Cancel</button>
+        </div>
+      </div>
+      <div class="co-card-icon" style="background:linear-gradient(135deg,#553c9a,#6b46c1)">SM</div>
+      <div class="co-card-name">Speech Masters</div>
+      <div class="co-card-sub">Speech Therapy Services<br>Illinois</div>
+      <div class="co-card-status" id="status-sm">Loading…</div>
+    </div>
+
+  </div>
+</div>
+
 <!-- Header -->
 <header>
-  <h1>Reliable Medical Services Recruiter Portal</h1>
+  <h1 id="portalTitle">Recruiter Portal</h1>
   <div class="header-right">
     <div class="view-nav">
       <button class="view-btn active" id="navCandidates" onclick="switchView('candidates')">Candidates</button>
-      <button class="view-btn"        id="navMessages"   onclick="switchView('messages')">Messages</button>
+      <button class="view-btn"        id="navMessages"   onclick="switchView('messages')">Messages<span class="conv-badge" id="convBadge" style="display:none"></span></button>
+      <button class="view-btn"        id="navPostJob"    onclick="switchView('postjob')">+ Post Job</button>
     </div>
+    <!-- Auto / Manual toggle -->
+    <div id="autoModeWrap" style="display:none;align-items:center;gap:7px;">
+      <span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:.3px;" id="autoModeLabel">AUTO</span>
+      <label style="position:relative;display:inline-block;width:38px;height:21px;cursor:pointer;">
+        <input type="checkbox" id="autoModeToggle" onchange="setAutoMode(this.checked)"
+          style="opacity:0;width:0;height:0;position:absolute;">
+        <span id="autoModeSlider" style="
+          position:absolute;inset:0;border-radius:99px;transition:background .2s;
+          background:#68d391;
+        "></span>
+        <span id="autoModeKnob" style="
+          position:absolute;top:3px;left:3px;width:15px;height:15px;
+          background:white;border-radius:50%;transition:transform .2s;
+        "></span>
+      </label>
+    </div>
+    <span class="co-badge" id="coBadge" style="display:none"></span>
     <div class="live-badge">
       <div class="live-dot" id="liveDot"></div>
       <span id="liveLabel">Live</span>
     </div>
+    <button class="btn-logout" id="btnLogout" style="display:none" onclick="doLogout()">Sign out</button>
   </div>
 </header>
 
@@ -514,8 +709,12 @@
   <!-- Left: conversation list -->
   <div class="conv-left">
     <div class="conv-left-hdr">
-      <span class="conv-left-title">Inbox</span>
-      <button class="btn-refresh-convs" id="btnRefreshConvs" onclick="scrapeConversations()">Refresh</button>
+      <span class="conv-left-title">Inbox<span id="newMsgPill" class="new-msg-pill" style="display:none"></span></span>
+      <div class="sync-ctl">
+        <span class="sync-dot-live idle" id="syncDotLive"></span>
+        <span class="sync-age" id="syncAge">—</span>
+        <button class="btn-sync-now" id="btnSyncNow" onclick="manualSync()">Sync Now</button>
+      </div>
     </div>
     <div class="conv-list" id="convList">
       <div style="padding:28px 16px;color:#a0aec0;font-size:13px;text-align:center;line-height:1.7">
@@ -539,19 +738,224 @@
     </div>
 
     <div class="conv-reply-box" id="replyBox" style="display:none">
-      <div class="conv-no-key" id="noKeyWarning" style="display:none">
-        Groq API key not set. Add <code>"groq_api_key"</code> to
-        <strong>config/settings.json</strong> to enable AI replies.
-      </div>
-      <textarea class="conv-reply-ta" id="replyText" placeholder="Write your reply here…"></textarea>
+      <textarea class="conv-reply-ta" id="replyText" placeholder="Write your reply here… or click ✨ AI Draft to let Ayesha suggest one."></textarea>
       <div class="conv-reply-actions">
-        <button class="btn-ai-suggest" id="btnAiReply"  onclick="aiSuggestReply()">AI Suggest Reply</button>
-        <button class="btn-send-conv"  id="btnSendReply" onclick="sendConvReply()">Send Reply</button>
+        <button class="btn-send-conv" id="btnSendReply" onclick="sendConvReply()">Send Reply</button>
+        <button class="btn-send-conv" id="btnAiReply" onclick="aiSuggestReply()" style="background:#6b46c1;">✨ AI Draft</button>
         <span class="conv-reply-note" id="replyNote"></span>
       </div>
     </div>
   </div>
 
+</div>
+
+<!-- ══ POST JOB VIEW ══ -->
+<div id="postJobView" style="display:none; min-height:calc(100vh - 58px); background:#f0f4f8; padding:32px 24px;">
+
+  <div style="max-width:820px; margin:0 auto;">
+
+    <!-- Page title -->
+    <div style="margin-bottom:24px;">
+      <h2 style="font-size:20px;font-weight:800;color:#1a202c;">Post a Job on Indeed</h2>
+      <p style="font-size:13px;color:#718096;margin-top:4px;">Describe the role in plain English or fill the form — AI will draft the full job post.</p>
+    </div>
+
+    <!-- Mode toggle -->
+    <div style="display:flex;gap:0;margin-bottom:24px;border:1.5px solid #d1d5db;border-radius:8px;overflow:hidden;width:fit-content;">
+      <button id="pjModeText" onclick="pjSetMode('text')"
+        style="padding:8px 22px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:#1F4E79;color:white;transition:all .15s;">
+        ✏️ Free Text
+      </button>
+      <button id="pjModeForm" onclick="pjSetMode('form')"
+        style="padding:8px 22px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:white;color:#4a5568;transition:all .15s;">
+        📋 Form
+      </button>
+    </div>
+
+    <!-- ── FREE TEXT MODE ── -->
+    <div id="pjTextPanel">
+      <div style="background:white;border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:16px;">
+        <label style="font-size:11px;font-weight:700;color:#4a5568;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:8px;">Describe the Role</label>
+        <textarea id="pjFreeText" rows="6"
+          placeholder="e.g. Looking for a full-time RN case manager in Lombard IL. Pay $40-50/hr. Need someone ASAP with home health experience and IL RN license."
+          style="width:100%;border:1.5px solid #d1d5db;border-radius:7px;padding:11px;font-size:13px;font-family:inherit;resize:vertical;line-height:1.65;color:#1a202c;outline:none;"
+          onfocus="this.style.borderColor='#1F4E79'" onblur="this.style.borderColor='#d1d5db'"></textarea>
+
+        <!-- Guardrail warning -->
+        <div id="pjGuardrail" style="display:none;margin-top:12px;background:#FFF3CD;border:1.5px solid #ffc107;border-radius:7px;padding:12px 14px;">
+          <div style="font-size:12px;font-weight:700;color:#856404;margin-bottom:8px;">⚠️ Please clarify the following before we draft:</div>
+          <div id="pjGuardrailChips" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+        </div>
+
+        <div style="margin-top:14px;display:flex;align-items:center;gap:12px;">
+          <button onclick="pjDraftFromText()"
+            style="padding:9px 24px;background:#1F4E79;color:white;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;">
+            ✨ Draft with AI
+          </button>
+          <span id="pjTextStatus" style="font-size:12px;color:#718096;"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── FORM MODE ── -->
+    <div id="pjFormPanel" style="display:none;">
+      <div style="background:white;border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:16px;">
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+          <!-- Job Title -->
+          <div>
+            <label class="pj-lbl">Job Title *</label>
+            <input id="fTitle" type="text" placeholder="e.g. Intake Coordinator"
+              style="width:100%;padding:8px 10px;border:1.5px solid #d1d5db;border-radius:7px;font-size:13px;font-family:inherit;color:#1a202c;outline:none;"
+              onfocus="this.style.borderColor='#1F4E79'" onblur="this.style.borderColor='#d1d5db'">
+          </div>
+          <!-- Location Type -->
+          <div>
+            <label class="pj-lbl">Location Type *</label>
+            <select id="fLocType" style="width:100%;padding:8px 10px;border:1.5px solid #d1d5db;border-radius:7px;font-size:13px;font-family:inherit;color:#1a202c;outline:none;background:white;">
+              <option>In person</option>
+              <option>Hybrid</option>
+              <option>Fully remote</option>
+            </select>
+          </div>
+          <!-- City -->
+          <div>
+            <label class="pj-lbl">City / Location *</label>
+            <input id="fCity" type="text" placeholder="e.g. Lombard"
+              style="width:100%;padding:8px 10px;border:1.5px solid #d1d5db;border-radius:7px;font-size:13px;font-family:inherit;color:#1a202c;outline:none;"
+              onfocus="this.style.borderColor='#1F4E79'" onblur="this.style.borderColor='#d1d5db'">
+          </div>
+          <!-- Hiring Timeline -->
+          <div>
+            <label class="pj-lbl">Hiring Timeline</label>
+            <select id="fTimeline" style="width:100%;padding:8px 10px;border:1.5px solid #d1d5db;border-radius:7px;font-size:13px;font-family:inherit;color:#1a202c;outline:none;background:white;">
+              <option>1 to 3 days</option>
+              <option>1 to 2 weeks</option>
+              <option selected>2 to 4 weeks</option>
+              <option>More than 4 weeks</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Job Type pills -->
+        <div style="margin-bottom:16px;">
+          <label class="pj-lbl">Job Type</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+            <label class="pj-check-pill"><input type="checkbox" value="Full-time" checked onchange="pjSyncJobTypes()"> Full-time</label>
+            <label class="pj-check-pill"><input type="checkbox" value="Part-time"          onchange="pjSyncJobTypes()"> Part-time</label>
+            <label class="pj-check-pill"><input type="checkbox" value="Contract"           onchange="pjSyncJobTypes()"> Contract</label>
+            <label class="pj-check-pill"><input type="checkbox" value="Temporary"          onchange="pjSyncJobTypes()"> Temporary</label>
+          </div>
+        </div>
+
+        <!-- Pay row -->
+        <div style="margin-bottom:16px;">
+          <label class="pj-lbl">Pay *</label>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px;">
+            <span style="font-size:13px;color:#4a5568;">$</span>
+            <input id="fPayMin" type="number" placeholder="Min" min="0"
+              style="width:90px;padding:8px 10px;border:1.5px solid #d1d5db;border-radius:7px;font-size:13px;font-family:inherit;color:#1a202c;outline:none;"
+              onfocus="this.style.borderColor='#1F4E79'" onblur="this.style.borderColor='#d1d5db'">
+            <span style="font-size:13px;color:#718096;">to $</span>
+            <input id="fPayMax" type="number" placeholder="Max" min="0"
+              style="width:90px;padding:8px 10px;border:1.5px solid #d1d5db;border-radius:7px;font-size:13px;font-family:inherit;color:#1a202c;outline:none;"
+              onfocus="this.style.borderColor='#1F4E79'" onblur="this.style.borderColor='#d1d5db'">
+            <select id="fPayPeriod" style="padding:8px 10px;border:1.5px solid #d1d5db;border-radius:7px;font-size:13px;font-family:inherit;color:#1a202c;outline:none;background:white;">
+              <option>per hour</option>
+              <option>per day</option>
+              <option>per week</option>
+              <option>per month</option>
+              <option>per year</option>
+            </select>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:#4a5568;cursor:pointer;">
+              <input type="checkbox" id="fPayNA" onchange="pjTogglePayNA()"> N/A (Negotiable)
+            </label>
+          </div>
+        </div>
+
+        <!-- Benefits -->
+        <div style="margin-bottom:16px;">
+          <label class="pj-lbl">Benefits</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;" id="pjBenefitPills">
+            <label class="pj-check-pill"><input type="checkbox" value="Health insurance"             checked> Health insurance</label>
+            <label class="pj-check-pill"><input type="checkbox" value="Dental insurance"             checked> Dental insurance</label>
+            <label class="pj-check-pill"><input type="checkbox" value="Vision insurance"             checked> Vision insurance</label>
+            <label class="pj-check-pill"><input type="checkbox" value="Paid time off"                      > Paid time off</label>
+            <label class="pj-check-pill"><input type="checkbox" value="401(k)"                             > 401(k)</label>
+            <label class="pj-check-pill"><input type="checkbox" value="Life insurance"                     > Life insurance</label>
+            <label class="pj-check-pill"><input type="checkbox" value="Flexible schedule"                  > Flexible schedule</label>
+            <label class="pj-check-pill"><input type="checkbox" value="Mileage reimbursement"              > Mileage reimbursement</label>
+          </div>
+        </div>
+
+        <!-- Notes / hints -->
+        <div style="margin-bottom:16px;">
+          <label class="pj-lbl">Additional Notes (hints for AI)</label>
+          <textarea id="fNotes" rows="3"
+            placeholder="e.g. Must have IL RN license, 2+ yrs home health, bilingual preferred..."
+            style="width:100%;border:1.5px solid #d1d5db;border-radius:7px;padding:10px;font-size:13px;font-family:inherit;resize:vertical;line-height:1.6;color:#1a202c;outline:none;margin-top:6px;"
+            onfocus="this.style.borderColor='#1F4E79'" onblur="this.style.borderColor='#d1d5db'"></textarea>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;">
+          <button onclick="pjDraftFromForm()"
+            style="padding:9px 24px;background:#1F4E79;color:white;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;">
+            ✨ Draft JD with AI
+          </button>
+          <span id="pjFormStatus" style="font-size:12px;color:#718096;"></span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── PREVIEW CARD ── -->
+    <div id="pjPreview" style="display:none;background:white;border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08);">
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+        <h3 style="font-size:15px;font-weight:800;color:#1a202c;">Preview — Review Before Posting</h3>
+        <button onclick="pjClosePreview()"
+          style="background:none;border:none;font-size:18px;cursor:pointer;color:#718096;">✕</button>
+      </div>
+
+      <!-- Editable quick fields -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div>
+          <label class="pj-lbl">Job Title</label>
+          <input id="pvTitle" type="text" style="width:100%;padding:7px 9px;border:1.5px solid #d1d5db;border-radius:6px;font-size:13px;font-family:inherit;color:#1a202c;outline:none;" onfocus="this.style.borderColor='#1F4E79'" onblur="this.style.borderColor='#d1d5db'">
+        </div>
+        <div>
+          <label class="pj-lbl">Location</label>
+          <input id="pvLocation" type="text" style="width:100%;padding:7px 9px;border:1.5px solid #d1d5db;border-radius:6px;font-size:13px;font-family:inherit;color:#1a202c;outline:none;" onfocus="this.style.borderColor='#1F4E79'" onblur="this.style.borderColor='#d1d5db'">
+        </div>
+        <div>
+          <label class="pj-lbl">Pay</label>
+          <input id="pvPay" type="text" style="width:100%;padding:7px 9px;border:1.5px solid #d1d5db;border-radius:6px;font-size:13px;font-family:inherit;color:#1a202c;outline:none;" onfocus="this.style.borderColor='#1F4E79'" onblur="this.style.borderColor='#d1d5db'">
+        </div>
+        <div>
+          <label class="pj-lbl">Job Type</label>
+          <input id="pvType" type="text" style="width:100%;padding:7px 9px;border:1.5px solid #d1d5db;border-radius:6px;font-size:13px;font-family:inherit;color:#1a202c;outline:none;" onfocus="this.style.borderColor='#1F4E79'" onblur="this.style.borderColor='#d1d5db'">
+        </div>
+      </div>
+
+      <!-- JD preview (editable) -->
+      <div style="margin-bottom:18px;">
+        <label class="pj-lbl">Job Description</label>
+        <textarea id="pvDescription" rows="14"
+          style="width:100%;border:1.5px solid #d1d5db;border-radius:7px;padding:11px;font-size:13px;font-family:inherit;resize:vertical;line-height:1.7;color:#1a202c;outline:none;margin-top:6px;"
+          onfocus="this.style.borderColor='#1F4E79'" onblur="this.style.borderColor='#d1d5db'"></textarea>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button onclick="pjPostToIndeed()"
+          style="padding:10px 28px;background:#276749;color:white;border:none;border-radius:7px;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:.2px;">
+          🚀 Post to Indeed
+        </button>
+        <span id="pjPostStatus" style="font-size:12px;color:#718096;"></span>
+      </div>
+
+    </div>
+
+  </div>
 </div>
 
 <!-- ══ MODAL ══ -->
@@ -614,6 +1018,20 @@
       <span class="mstatus" id="mStatus"></span>
     </div>
 
+  </div>
+</div>
+
+<!-- ══ JOB INFO MODAL ══ -->
+<div class="overlay" id="jobInfoOverlay" style="display:none" onclick="if(event.target===this) closeJobInfo()">
+  <div class="job-info-modal">
+    <div class="job-info-hdr">
+      <div>
+        <h3 id="jiTitle">—</h3>
+        <div class="sub" id="jiSub"></div>
+      </div>
+      <button class="mhdr-close" onclick="closeJobInfo()">&#10005;</button>
+    </div>
+    <div class="job-info-body" id="jiBody"></div>
   </div>
 </div>
 
@@ -720,6 +1138,342 @@
 
 <script>
 /* ═══════════════════════════════════════════════════
+   COMPANY SELECT + AUTH
+═══════════════════════════════════════════════════ */
+let _authUser = null;
+
+const CO_META = {
+  rms: { display_name: 'Reliable Medical Services', color: '#1F4E79' },
+  sm:  { display_name: 'Speech Masters',            color: '#553c9a' },
+};
+
+function _showPortal(user) {
+  _authUser = user;
+  document.getElementById('loginOverlay').style.display = 'none';
+  const meta = CO_META[user.company] || {};
+  document.getElementById('portalTitle').textContent =
+    (meta.display_name || user.display_name || 'Recruiter') + ' Portal';
+  document.getElementById('coBadge').textContent    = meta.display_name || user.display_name || '';
+  document.getElementById('coBadge').style.display  = 'inline';
+  document.getElementById('btnLogout').style.display = 'inline';
+
+  // Always land on the main dashboard — All roles, All candidates — regardless
+  // of whatever view/filter/open chat was left over from a previous company's
+  // session (switching companies must not carry state across accounts).
+  activeRole   = 'all';
+  activeStatus = 'all';
+  activeThread = null;
+  switchView('candidates');
+
+  loadAutoMode();
+}
+
+async function checkAuth() {
+  // Seed card status badges while we check
+  _refreshCardStatus();
+  try {
+    const r = await fetch('/api/auth-status');
+    if (r.ok) {
+      const user = await r.json();
+      if (user.authenticated) { _showPortal(user); return true; }
+    }
+  } catch { /* show selector */ }
+  document.getElementById('loginOverlay').style.display = 'flex';
+  return false;
+}
+
+async function _refreshCardStatus() {
+  try {
+    const r = await fetch('/api/company-status');
+    if (!r.ok) return;
+    const data = await r.json();
+    for (const [slug, info] of Object.entries(data)) {
+      const el = document.getElementById('status-' + slug);
+      if (!el) continue;
+      if (info.session_ok) {
+        el.textContent  = info.candidates + ' candidates';
+        el.className    = 'co-card-status co-status-ready';
+      } else {
+        el.textContent = 'Session needed';
+        el.className   = 'co-card-status co-status-setup';
+      }
+    }
+  } catch { /* ignore */ }
+}
+
+const _loginPollers = {};
+
+async function selectCompany(slug) {
+  const loading    = document.getElementById('loading-' + slug);
+  const loadingMsg = document.getElementById('loading-' + slug + '-msg');
+  const loadingCancel = document.getElementById('loading-' + slug + '-cancel');
+
+  function showLoading(msg, showCancel) {
+    if (loading)    loading.style.display = 'flex';
+    if (loadingMsg) loadingMsg.textContent = msg;
+    if (loadingCancel) loadingCancel.style.display = showCancel ? 'inline-block' : 'none';
+  }
+  function hideLoading() {
+    if (loading)    loading.style.display = 'none';
+    if (loadingCancel) loadingCancel.style.display = 'none';
+  }
+
+  showLoading('Checking…', false);
+
+  try {
+    // Check if Indeed session exists
+    const statusR = await fetch('/api/company-status');
+    if (statusR.ok) {
+      const statusData = await statusR.json();
+      const info = statusData[slug];
+      if (info && !info.session_ok) {
+        // No Indeed session — open login terminal
+        showLoading('Opening login terminal…', false);
+        const loginR = await fetch('/api/trigger-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ company: slug }),
+        });
+        const loginData = await loginR.json();
+        if (!loginData.ok && loginData.error !== 'Session already exists') {
+          showLoading('Error: ' + (loginData.error || 'Could not start login'), false);
+          setTimeout(hideLoading, 4000);
+          return;
+        }
+        if (loginData.ok) {
+          // Poll login status — show OTP input when script is ready
+          showLoading('Starting login browser…', false);
+          _pollForOtp(slug, showLoading, hideLoading);
+          return;
+        }
+        // loginData.error === 'Session already exists' — fall through to open portal
+      }
+    }
+  } catch { /* network error — try to open portal anyway */ }
+
+  // Session exists (or status check failed) — open portal
+  showLoading('Opening…', false);
+  try {
+    const r = await fetch('/api/select-company', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ company: slug }),
+    });
+    const data = await r.json();
+    if (data.ok) {
+      hideLoading();
+      _showPortal({ company: slug, display_name: data.display_name });
+      loadTemplates();
+      fetchAll(false);
+      pollLiveSync();
+    } else {
+      showLoading(data.error || 'Failed to open portal', false);
+      setTimeout(hideLoading, 4000);
+    }
+  } catch (e) {
+    showLoading('Error: ' + e.message, false);
+    setTimeout(hideLoading, 4000);
+  }
+}
+
+function _pollForOtp(slug, showLoading, hideLoading) {
+  let otpShown = false;
+  const timer = setInterval(async () => {
+    try {
+      const r = await fetch('/api/login-status');
+      const d = await r.json();
+      const st = d.status || '';
+
+      if (st === 'WAITING_FOR_OTP' && !otpShown) {
+        otpShown = true;
+        clearInterval(timer);
+        // Replace loading overlay content with OTP input
+        const loading = document.getElementById('loading-' + slug);
+        if (loading) {
+          loading.innerHTML = `
+            <div style="text-align:center;padding:12px">
+              <div style="font-size:13px;font-weight:700;color:#1F4E79;margin-bottom:10px">Enter OTP from your email</div>
+              <input id="otp-input-${slug}" type="text" maxlength="10" placeholder="e.g. 123456"
+                style="font-size:18px;font-weight:700;text-align:center;width:130px;padding:6px 10px;border:2px solid #1F4E79;border-radius:6px;outline:none"
+                oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+              />
+              <br>
+              <button onclick="submitOtp('${slug}')"
+                style="margin-top:10px;padding:6px 22px;background:#1F4E79;color:white;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer">
+                Submit
+              </button>
+              <div id="otp-msg-${slug}" style="font-size:11px;color:#718096;margin-top:6px"></div>
+            </div>`;
+          loading.style.display = 'flex';
+        }
+        return;
+      }
+
+      if (st === 'SAVED') {
+        clearInterval(timer);
+        showLoading('Logged in! Opening portal…', false);
+        await new Promise(res => setTimeout(res, 800));
+        const r2 = await fetch('/api/select-company', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({company: slug}),
+        });
+        const d2 = await r2.json();
+        hideLoading();
+        if (d2.ok) {
+          _showPortal({company: slug, display_name: d2.display_name});
+          loadTemplates(); fetchAll(false); pollLiveSync();
+        }
+      }
+    } catch { /* retry */ }
+  }, 2000);
+}
+
+async function submitOtp(slug) {
+  const inp = document.getElementById('otp-input-' + slug);
+  const msg = document.getElementById('otp-msg-' + slug);
+  const otp = (inp ? inp.value : '').trim();
+  if (!otp) { if (msg) msg.textContent = 'Please enter the OTP.'; return; }
+  if (msg) msg.textContent = 'Submitting…';
+  try {
+    await fetch('/api/submit-otp', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({otp}),
+    });
+    if (msg) msg.textContent = 'OTP sent! Logging in…';
+    // Now poll for SAVED
+    const loading = document.getElementById('loading-' + slug);
+    const showL = (m) => { if (loading) { loading.innerHTML = `<div style="text-align:center;font-size:13px;font-weight:700;color:#1F4E79;padding:12px">${m}</div>`; loading.style.display='flex'; } };
+    const hideL = () => { if (loading) loading.style.display='none'; };
+    _pollForOtp(slug, showL, hideL);
+  } catch (e) {
+    if (msg) msg.textContent = 'Error: ' + e.message;
+  }
+}
+
+function _pollForSession(slug) {
+  if (_loginPollers[slug]) clearInterval(_loginPollers[slug]);
+  const loading       = document.getElementById('loading-' + slug);
+  const loadingMsg    = document.getElementById('loading-' + slug + '-msg');
+  const loadingCancel = document.getElementById('loading-' + slug + '-cancel');
+  let attempts = 0;
+
+  _loginPollers[slug] = setInterval(async () => {
+    attempts++;
+    const dot = ['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','⠏'][attempts % 10];
+    if (loadingMsg) loadingMsg.textContent = dot + ' Waiting for login… (complete OTP in terminal)';
+
+    if (attempts > 120) { // 10 min
+      cancelLogin(slug);
+      if (loadingMsg) loadingMsg.textContent = 'Login timed out. Click card to retry.';
+      setTimeout(() => { if (loading) loading.style.display = 'none'; }, 5000);
+      return;
+    }
+
+    try {
+      const r = await fetch('/api/company-status');
+      if (!r.ok) return;
+      const data = await r.json();
+      if (data[slug] && data[slug].session_ok) {
+        cancelLogin(slug);
+        if (loadingMsg) loadingMsg.textContent = 'Logged in! Opening portal…';
+        if (loadingCancel) loadingCancel.style.display = 'none';
+        await new Promise(res => setTimeout(res, 900));
+        const r2 = await fetch('/api/select-company', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ company: slug }),
+        });
+        const d = await r2.json();
+        if (loading) loading.style.display = 'none';
+        if (d.ok) {
+          _showPortal({ company: slug, display_name: d.display_name });
+          loadTemplates();
+          fetchAll(false);
+          pollLiveSync();
+        }
+      }
+    } catch { /* retry next tick */ }
+  }, 5000);
+}
+
+function cancelLogin(slug) {
+  if (_loginPollers[slug]) { clearInterval(_loginPollers[slug]); delete _loginPollers[slug]; }
+  const loading    = document.getElementById('loading-' + slug);
+  const loadingCancel = document.getElementById('loading-' + slug + '-cancel');
+  if (loading)    loading.style.display = 'none';
+  if (loadingCancel) loadingCancel.style.display = 'none';
+}
+
+/* ═══════════════════════════════════════════════════
+   Auto / Manual mode toggle
+═══════════════════════════════════════════════════ */
+async function loadAutoMode() {
+  const wrap = document.getElementById('autoModeWrap');
+  if (activeRole === 'all') {
+    wrap.style.display = 'none';
+    return;
+  }
+  try {
+    const r = await fetch(`/api/auto-mode?role=${encodeURIComponent(activeRole)}`);
+    if (!r.ok) return;
+    const { auto_mode } = await r.json();
+    _applyAutoMode(auto_mode);
+    wrap.style.display = 'flex';
+  } catch { /* ignore */ }
+}
+
+function _applyAutoMode(isAuto) {
+  const cb     = document.getElementById('autoModeToggle');
+  const slider = document.getElementById('autoModeSlider');
+  const knob   = document.getElementById('autoModeKnob');
+  const label  = document.getElementById('autoModeLabel');
+  cb.checked           = isAuto;
+  slider.style.background = isAuto ? '#68d391' : '#fc8181';
+  knob.style.transform    = isAuto ? 'translateX(17px)' : 'translateX(0)';
+  label.textContent       = isAuto ? 'AUTO' : 'MANUAL';
+  label.style.color       = isAuto ? 'rgba(255,255,255,.85)' : '#fc8181';
+}
+
+async function setAutoMode(isAuto) {
+  if (activeRole === 'all') return;   // toggle is hidden in this case; guard anyway
+  _applyAutoMode(isAuto);
+  try {
+    await fetch('/api/auto-mode', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: activeRole, auto_mode: isAuto }),
+    });
+  } catch { /* ignore */ }
+}
+
+async function doLogout() {
+  await fetch('/api/logout', { method: 'POST' });
+  _authUser = null;
+  ALL = []; CONVERSATIONS = []; activeThread = null;
+  activeRole = 'all'; activeStatus = 'all';
+  switchView('candidates');
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('portalTitle').textContent    = 'Recruiter Portal';
+  document.getElementById('coBadge').style.display      = 'none';
+  document.getElementById('btnLogout').style.display    = 'none';
+  document.getElementById('autoModeWrap').style.display = 'none';
+  _refreshCardStatus();
+}
+
+// Intercept 401s and bounce back to company select
+const _origFetch = window.fetch;
+window.fetch = async function(...args) {
+  const r = await _origFetch(...args);
+  if (r.status === 401 && _authUser) {
+    _authUser = null;
+    document.getElementById('loginOverlay').style.display = 'flex';
+    document.getElementById('coBadge').style.display      = 'none';
+    document.getElementById('btnLogout').style.display    = 'none';
+  }
+  return r;
+};
+
+/* ═══════════════════════════════════════════════════
    State
 ═══════════════════════════════════════════════════ */
 let ALL   = [];          // full candidate list
@@ -738,10 +1492,13 @@ async function fetchAll(silent) {
 
     const newOnes = data.filter(c => !knownIds.has(c.id));
     newOnes.forEach(c => knownIds.add(c.id));
-    if (!silent && ALL.length && newOnes.length) showNewBanner(newOnes.length);
+
+    const hasNew = newOnes.length > 0;
+    if (!silent && ALL.length && hasNew) showNewBanner(newOnes.length);
 
     ALL = data;
-    if (!silent) renderGrid();
+    // Always re-render if there are new candidates, even on silent ticks
+    if (!silent || hasNew) renderGrid();
     buildRoleTabs();
     setLive(true);
   } catch {
@@ -780,25 +1537,88 @@ function setLive(ok) {
    Role tabs
 ═══════════════════════════════════════════════════ */
 function buildRoleTabs() {
-  const counts = {};
+  // Group by job_id (the actual Indeed posting), not job_title — two distinct
+  // postings can share the exact same title text (e.g. a role reposted, or
+  // several near-identical listings), and a title-only group would silently
+  // merge them into one tab/filter/auto-mode switch.
+  const byJobId = {};
   ALL.forEach(c => {
-    const r = c.job_title || 'Unknown';
-    counts[r] = (counts[r] || 0) + 1;
+    const id = c.job_id || c.job_title || 'unknown';
+    if (!byJobId[id]) byJobId[id] = { title: c.job_title || 'Unknown', count: 0 };
+    byJobId[id].count++;
   });
+
   const bar = document.getElementById('roleTabs');
   bar.innerHTML = '';
 
-  function tab(label, role, count) {
+  function tab(label, role, count, jobId) {
     const d = document.createElement('div');
     d.className = 'role-tab' + (activeRole === role ? ' active' : '');
-    d.innerHTML = `${label}<span class="cnt">${count}</span>`;
-    d.onclick = () => { activeRole = role; buildRoleTabs(); renderGrid(); };
+    d.innerHTML = `${esc(label)}<span class="cnt">${count}</span>`;
+    if (jobId) {
+      const ic = document.createElement('span');
+      ic.className = 'role-info-ic';
+      ic.textContent = 'i';
+      ic.title = 'Job details — date posted, requirements, JD';
+      ic.onclick = (e) => { e.stopPropagation(); showJobInfo(jobId, label); };
+      d.appendChild(ic);
+    }
+    d.onclick = () => { activeRole = role; buildRoleTabs(); renderGrid(); loadAutoMode(); };
     bar.appendChild(d);
   }
 
   tab('All', 'all', ALL.length);
-  Object.entries(counts).sort(([a],[b]) => a.localeCompare(b)).forEach(([r, n]) => tab(r, r, n));
+  // Duplicate-titled postings show the same clean label — job_id (not the
+  // visible text) is what actually keys filtering/auto-mode/job-info lookups,
+  // so there's no need to expose the raw posting ID in the UI.
+  Object.entries(byJobId)
+    .sort(([, a], [, b]) => a.title.localeCompare(b.title))
+    .forEach(([jobId, { title, count }]) => {
+      tab(title, jobId, count, jobId);
+    });
   buildStatusPills();
+}
+
+/* ═══════════════════════════════════════════════════
+   Job info popup — date posted, requirements, JD
+═══════════════════════════════════════════════════ */
+async function showJobInfo(jobId, label) {
+  const overlay = document.getElementById('jobInfoOverlay');
+  document.getElementById('jiTitle').textContent = label;
+  document.getElementById('jiSub').textContent = 'Loading…';
+  document.getElementById('jiBody').innerHTML = '';
+  overlay.style.display = 'flex';
+  try {
+    const resp = await fetch(`/api/job-info/${encodeURIComponent(jobId)}`);
+    if (!resp.ok) {
+      document.getElementById('jiSub').textContent = 'No info available for this posting.';
+      return;
+    }
+    const d = await resp.json();
+    document.getElementById('jiTitle').textContent = d.title || label;
+    document.getElementById('jiSub').textContent = d.date_posted ? `Date posted: ${d.date_posted}` : 'Date posted: unknown';
+
+    const reqHTML = (d.requirements || []).length
+      ? d.requirements.map(r =>
+          `<div class="req-item"><strong>${esc(r.label)}</strong> <span class="req-max">(${r.max} pts)</span>` +
+          (r.key_things && r.key_things.length ? `<br>${r.key_things.map(esc).join(' · ')}` : '') +
+          `</div>`
+        ).join('')
+      : '<p style="color:#a0aec0">No AI-generated requirements yet for this role.</p>';
+
+    const jdHTML = d.job_description
+      ? `<p>${esc(d.job_description)}</p>`
+      : '<p style="color:#a0aec0">No job description cached yet.</p>';
+
+    document.getElementById('jiBody').innerHTML =
+      `<h4>Requirements</h4>${reqHTML}<h4>Job Description</h4>${jdHTML}`;
+  } catch {
+    document.getElementById('jiSub').textContent = 'Failed to load job info.';
+  }
+}
+
+function closeJobInfo() {
+  document.getElementById('jobInfoOverlay').style.display = 'none';
 }
 
 /* ═══════════════════════════════════════════════════
@@ -812,12 +1632,13 @@ const PILL_DEFS = [
   { s: 'interviewing', label: 'Interviewing' },
   { s: 'rejected',     label: 'Rejected'     },
   { s: 'hired',        label: 'Hired'        },
+  { s: 'withdrawn',    label: 'Withdrawn'    },
 ];
 
 function buildStatusPills() {
   const roleFiltered = activeRole === 'all'
     ? ALL
-    : ALL.filter(c => c.job_title === activeRole);
+    : ALL.filter(c => (c.job_id || c.job_title) === activeRole);
 
   const counts = { all: roleFiltered.length };
   PILL_DEFS.forEach(({ s }) => { if (s !== 'all') counts[s] = 0; });
@@ -874,6 +1695,7 @@ function statusLabel(st) {
   return {
     new: 'New', reviewing: 'Hold', contacting: 'Contacting',
     interviewing: 'Interviewing', hired: 'Hired', rejected: 'Rejected',
+    withdrawn: 'Withdrawn',
   }[st] || st;
 }
 
@@ -888,7 +1710,7 @@ function critKlass(score, max) {
 ═══════════════════════════════════════════════════ */
 function filteredList() {
   return ALL.filter(c => {
-    if (activeRole !== 'all' && c.job_title !== activeRole) return false;
+    if (activeRole !== 'all' && (c.job_id || c.job_title) !== activeRole) return false;
     if (activeStatus !== 'all' && (c.status || 'new') !== activeStatus) return false;
     return true;
   });
@@ -1001,11 +1823,25 @@ function openModal(c) {
   const criteria = bd.criteria || {};
   const tbody = document.getElementById('mCritBody');
   const rows = Object.entries(criteria).map(([key, v]) => {
-    const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-    const ck    = critKlass(v.score, v.max);
-    const evid  = v.evidence
-      ? `<span class="evid">"${esc(v.evidence)}"</span>`
-      : `<span class="no-evid">No evidence — scored 0</span>`;
+    const label    = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    const ck       = critKlass(v.score, v.max);
+    const isPartial = v.evidence && v.score > 0 && v.score < v.max;
+    const isZero    = v.score === 0;
+    const infoIcon  = v.reasoning
+      ? `<span class="info-wrap"><span class="info-icon">i</span><span class="info-tip">${esc(v.reasoning)}</span></span>`
+      : '';
+    let evid;
+    if (v.evidence && isPartial) {
+      // Partial score: show evidence + reasoning inline so user sees why points were cut
+      evid = `<span class="evid">"${esc(v.evidence)}"</span>`
+           + `<div class="partial-reason">${esc(v.reasoning)}</div>`;
+    } else if (v.evidence) {
+      // Full score with evidence: show evidence + hover icon
+      evid = `<span class="evid">"${esc(v.evidence)}"</span>${infoIcon}`;
+    } else {
+      // Zero score: show reasoning inline + hover icon
+      evid = `<span class="no-evid">${esc(v.reasoning || 'No evidence — scored 0')}</span>${infoIcon}`;
+    }
     return `<tr>
       <td>${label}</td>
       <td><span class="cscore ${ck}">${v.score}</span></td>
@@ -1391,16 +2227,197 @@ const CAND_ELS = () => [
 
 function switchView(view) {
   currentView = view;
-  const isMsgs = view === 'messages';
+  const isCands = view === 'candidates';
+  const isMsgs  = view === 'messages';
+  const isPost  = view === 'postjob';
 
-  CAND_ELS().forEach(el => { if (el) el.style.display = isMsgs ? 'none' : ''; });
-  const mv = document.getElementById('messagesView');
-  mv.style.display = isMsgs ? 'flex' : 'none';
+  CAND_ELS().forEach(el => { if (el) el.style.display = isCands ? '' : 'none'; });
+  document.getElementById('messagesView').style.display = isMsgs  ? 'flex'  : 'none';
+  document.getElementById('postJobView').style.display  = isPost  ? 'block' : 'none';
 
-  document.getElementById('navCandidates').classList.toggle('active', !isMsgs);
-  document.getElementById('navMessages').classList.toggle('active',  isMsgs);
+  document.getElementById('navCandidates').classList.toggle('active', isCands);
+  document.getElementById('navMessages').classList.toggle('active',   isMsgs);
+  document.getElementById('navPostJob').classList.toggle('active',    isPost);
 
-  if (isMsgs) loadConversations();
+  if (isMsgs) pollLiveSync();
+}
+
+/* ═══════════════════════════════════════════════════
+   POST JOB
+═══════════════════════════════════════════════════ */
+let _pjJob = {};   // last drafted job object
+
+function pjSetMode(mode) {
+  const isText = mode === 'text';
+  document.getElementById('pjTextPanel').style.display = isText ? '' : 'none';
+  document.getElementById('pjFormPanel').style.display = isText ? 'none' : '';
+  document.getElementById('pjModeText').style.background = isText ? '#1F4E79' : 'white';
+  document.getElementById('pjModeText').style.color      = isText ? 'white'   : '#4a5568';
+  document.getElementById('pjModeForm').style.background = isText ? 'white'   : '#1F4E79';
+  document.getElementById('pjModeForm').style.color      = isText ? '#4a5568' : 'white';
+  document.getElementById('pjPreview').style.display = 'none';
+}
+
+function pjSyncJobTypes() {
+  // keep track via checkboxes — no extra state needed
+}
+
+function pjTogglePayNA() {
+  const na = document.getElementById('fPayNA').checked;
+  document.getElementById('fPayMin').disabled = na;
+  document.getElementById('fPayMax').disabled = na;
+  document.getElementById('fPayPeriod').disabled = na;
+  ['fPayMin','fPayMax','fPayPeriod'].forEach(id => {
+    document.getElementById(id).style.opacity = na ? '.4' : '1';
+  });
+}
+
+function _pjShowGuardrail(missing) {
+  const box   = document.getElementById('pjGuardrail');
+  const chips = document.getElementById('pjGuardrailChips');
+  if (!missing || !missing.length) { box.style.display = 'none'; return; }
+  const labels = { title: 'Job Title', location: 'Location / City', salary: 'Salary / Pay (or type N/A)' };
+  chips.innerHTML = missing.map(f =>
+    `<span style="background:#ffc107;color:#856404;padding:4px 12px;border-radius:99px;font-size:12px;font-weight:700;">${labels[f] || f}</span>`
+  ).join('');
+  box.style.display = '';
+}
+
+function _pjShowPreview(job) {
+  _pjJob = job;
+  const payStr = job.pay_negotiable
+    ? 'Negotiable'
+    : job.pay_min && job.pay_max && job.pay_min !== job.pay_max
+      ? `$${job.pay_min} – $${job.pay_max} ${job.pay_period || 'per hour'}`
+      : job.pay_min
+        ? `$${job.pay_min} ${job.pay_period || 'per hour'} (fixed)`
+        : '—';
+  document.getElementById('pvTitle').value       = job.title || '';
+  document.getElementById('pvLocation').value    = `${job.location_query || ''} (${job.location_type || 'In person'})`;
+  document.getElementById('pvPay').value         = payStr;
+  document.getElementById('pvType').value        = (job.job_types || ['Full-time']).join(', ');
+  document.getElementById('pvDescription').value = job.description || '';
+  document.getElementById('pjPreview').style.display = '';
+  document.getElementById('pjPreview').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function pjClosePreview() {
+  document.getElementById('pjPreview').style.display = 'none';
+}
+
+async function pjDraftFromText() {
+  const text   = document.getElementById('pjFreeText').value.trim();
+  const status = document.getElementById('pjTextStatus');
+  if (!text) { status.textContent = 'Please describe the role first.'; return; }
+
+  status.textContent = '✨ Drafting with AI…';
+  document.getElementById('pjGuardrail').style.display = 'none';
+  document.getElementById('pjPreview').style.display   = 'none';
+
+  try {
+    const r    = await fetch('/api/draft-job', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'text', text }),
+    });
+    const data = await r.json();
+    if (!data.ok) { status.textContent = '❌ ' + (data.error || 'Error'); return; }
+
+    if (data.missing && data.missing.length) {
+      _pjShowGuardrail(data.missing);
+      status.textContent = 'Please fill in the missing info above, then try again.';
+      return;
+    }
+
+    status.textContent = '';
+    _pjShowPreview(data);
+  } catch(e) {
+    status.textContent = '❌ ' + e.message;
+  }
+}
+
+async function pjDraftFromForm() {
+  const status = document.getElementById('pjFormStatus');
+  const title  = document.getElementById('fTitle').value.trim();
+  const city   = document.getElementById('fCity').value.trim();
+  if (!title) { status.textContent = 'Job Title is required.'; return; }
+  if (!city)  { status.textContent = 'City / Location is required.'; return; }
+
+  const payNA  = document.getElementById('fPayNA').checked;
+  const payMin = document.getElementById('fPayMin').value.trim();
+  const payMax = document.getElementById('fPayMax').value.trim();
+  if (!payNA && !payMin) { status.textContent = 'Enter a pay range or check N/A.'; return; }
+
+  const jobTypes = [...document.querySelectorAll('#pjFormPanel input[type=checkbox]')]
+    .filter(cb => cb.value && ['Full-time','Part-time','Contract','Temporary'].includes(cb.value) && cb.checked)
+    .map(cb => cb.value);
+
+  const benefits = [...document.querySelectorAll('#pjBenefitPills input[type=checkbox]')]
+    .filter(cb => cb.checked).map(cb => cb.value);
+
+  const form = {
+    title,
+    location_type:   document.getElementById('fLocType').value,
+    location_query:  city,
+    location_pick:   city + ', IL',
+    hiring_timeline: document.getElementById('fTimeline').value,
+    hires_needed:    1,
+    job_types:       jobTypes.length ? jobTypes : ['Full-time'],
+    pay_min:         payNA ? null : payMin,
+    pay_max:         payNA ? null : payMax,
+    pay_period:      document.getElementById('fPayPeriod').value,
+    pay_negotiable:  payNA,
+    benefits,
+    notes:           document.getElementById('fNotes').value.trim(),
+  };
+
+  status.textContent = '✨ Drafting JD with AI…';
+  document.getElementById('pjPreview').style.display = 'none';
+
+  try {
+    const r    = await fetch('/api/draft-job', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'form', form }),
+    });
+    const data = await r.json();
+    if (!data.ok) { status.textContent = '❌ ' + (data.error || 'Error'); return; }
+    status.textContent = '';
+    _pjShowPreview(data);
+  } catch(e) {
+    status.textContent = '❌ ' + e.message;
+  }
+}
+
+async function pjPostToIndeed() {
+  const status = document.getElementById('pjPostStatus');
+
+  // Pull latest edits from preview fields back into job object
+  _pjJob.title       = document.getElementById('pvTitle').value.trim();
+  _pjJob.description = document.getElementById('pvDescription').value.trim();
+
+  if (!confirm(`Post "${_pjJob.title}" to Indeed now?\n\nThis will open a browser and submit the job posting.`)) return;
+
+  status.textContent = '🚀 Launching Indeed — watch the browser window…';
+
+  try {
+    const r    = await fetch('/api/post-job', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ job: _pjJob }),
+    });
+    const data = await r.json();
+    if (data.ok) {
+      status.style.color = '#276749';
+      status.textContent = '✓ ' + data.message;
+    } else {
+      status.style.color = '#c53030';
+      status.textContent = '❌ ' + (data.error || 'Failed to start');
+    }
+  } catch(e) {
+    status.style.color = '#c53030';
+    status.textContent = '❌ ' + e.message;
+  }
 }
 
 /* ═══════════════════════════════════════════════════
@@ -1414,6 +2431,13 @@ async function loadConversations() {
     const r = await fetch('/api/conversations');
     if (r.ok) {
       CONVERSATIONS = await r.json();
+      const badge = document.getElementById('convBadge');
+      if (CONVERSATIONS.length) {
+        badge.textContent = CONVERSATIONS.length;
+        badge.style.display = 'inline-flex';
+      } else {
+        badge.style.display = 'none';
+      }
       renderConvList();
     }
   } catch { /* ignore */ }
@@ -1425,14 +2449,28 @@ function renderConvList() {
     list.innerHTML = '<div style="padding:28px 16px;color:#a0aec0;font-size:13px;text-align:center;line-height:1.7">No conversations yet.<br>Click <strong>Refresh</strong> to scrape.</div>';
     return;
   }
-  list.innerHTML = CONVERSATIONS.map(c => `
-    <div class="conv-item${activeThread && activeThread.thread_id === c.thread_id ? ' active' : ''}"
-         onclick="openThread('${esc(c.thread_id)}')">
-      <div class="ci-name">${esc(c.candidate_name || '—')}</div>
-      <div class="ci-job">${esc(c.job_info || '')}</div>
-      <div class="ci-prev">${esc(c.last_message_preview || '')}</div>
-      <div class="ci-meta">${esc(c.last_message_timestamp || '')}${c.message_count ? ' · ' + c.message_count + ' messages' : ''}</div>
-    </div>`).join('');
+  list.innerHTML = CONVERSATIONS.map(c => {
+    const name     = c.candidate_name && c.candidate_name.trim() ? c.candidate_name : 'Unknown Candidate';
+    const job      = c.job_info && c.job_info.trim() && c.job_info !== '2' ? c.job_info : '';
+    const preview  = (c.last_message_preview || '').replace(/^[A-Z-]+\n/, '').trim();
+    const meta     = [c.last_message_timestamp, c.message_count ? c.message_count + ' msgs' : ''].filter(Boolean).join(' · ');
+    const isActive = activeThread && activeThread.thread_id === c.thread_id;
+
+    // Show "✨ Auto" badge if Ayesha auto-replied within the last hour
+    let autoBadge = '';
+    if (c.auto_replied_at) {
+      const mins = Math.round((Date.now() - new Date(c.auto_replied_at)) / 60000);
+      if (mins < 60) autoBadge = `<span class="ci-auto-badge">✨ Auto ${mins < 1 ? 'just now' : mins + 'm ago'}</span>`;
+    }
+
+    return `
+    <div class="conv-item${isActive ? ' active' : ''}" onclick="openThread('${esc(c.thread_id)}')">
+      <div class="ci-name">${esc(name)}${autoBadge}</div>
+      ${job ? `<div class="ci-job">${esc(job)}</div>` : ''}
+      ${preview ? `<div class="ci-prev">${esc(preview)}</div>` : ''}
+      ${meta ? `<div class="ci-meta">${esc(meta)}</div>` : ''}
+    </div>`;
+  }).join('');
 }
 
 async function openThread(threadId) {
@@ -1456,50 +2494,125 @@ function renderThread() {
   if (!messages.length) {
     scroll.innerHTML = '<div class="conv-empty"><div>No messages in this thread yet</div></div>';
   } else {
-    let html = '', lastDg = '';
+    let html = '', lastDg = '', lastSender = '';
     messages.forEach(msg => {
       const dg  = msg.date_group || '';
       if (dg && dg !== lastDg) {
         html += `<div class="date-sep">${esc(dg)}</div>`;
         lastDg = dg;
+        lastSender = '';   // reset sender label after each date group
       }
-      const dir = msg.direction === 'outbound' ? 'out' : 'in';
-      const ts  = msg.timestamp ? `<div class="bubble-ts">${esc(msg.timestamp)}</div>` : '';
-      html += `<div class="bubble-row ${dir}"><div class="bubble ${dir}">${esc(msg.content)}</div>${ts}</div>`;
+      const dir    = msg.direction === 'outbound' ? 'out' : 'in';
+      const sender = msg.sender || (dir === 'out' ? 'Recruiter' : 'Candidate');
+      const ts     = msg.timestamp ? `<div class="bubble-ts">${esc(msg.timestamp)}</div>` : '';
+      const senderLabel = sender !== lastSender
+        ? `<div class="bubble-sender">${esc(sender)}</div>` : '';
+      lastSender = sender;
+      html += `<div class="bubble-row ${dir}">${senderLabel}<div class="bubble ${dir}">${esc(msg.content)}</div>${ts}</div>`;
     });
     scroll.innerHTML = html;
     scroll.scrollTop = scroll.scrollHeight;
   }
 
-  // Show reply box; check if groq key is set
   document.getElementById('replyBox').style.display = '';
-  const noKey = document.getElementById('noKeyWarning');
-  noKey.style.display = SETTINGS.groq_api_key ? 'none' : '';
 
   document.getElementById('replyText').value = '';
   document.getElementById('replyNote').textContent = '';
   document.getElementById('replyNote').className = 'conv-reply-note';
 }
 
-async function scrapeConversations() {
-  const btn = document.getElementById('btnRefreshConvs');
-  btn.disabled = true;
-  btn.textContent = 'Scraping…';
-  try {
-    const r    = await fetch('/api/scrape-conversations', { method: 'POST' });
-    const data = await r.json();
-    if (data.ok) {
-      await loadConversations();
-      btn.textContent = `Done (${data.count})`;
-    } else {
-      btn.textContent = 'Error';
-      console.error(data.error);
-    }
-  } catch (e) {
-    btn.textContent = 'Error';
-    console.error(e);
+/* ═══════════════════════════════════════════════════
+   Live sync — auto-polls every 30 s, shows sync state
+═══════════════════════════════════════════════════ */
+let _prevCounts = {};   // thread_id → last known message_count
+
+function _updateSyncDot(state) {
+  const dot = document.getElementById('syncDotLive');
+  const age = document.getElementById('syncAge');
+  const btn = document.getElementById('btnSyncNow');
+  dot.className = 'sync-dot-live';
+  if (state.running) {
+    dot.classList.add('busy');
+    age.textContent = 'Syncing…';
+    btn.disabled = true;
+    return;
   }
-  setTimeout(() => { btn.disabled = false; btn.textContent = 'Refresh'; }, 2500);
+  if (state.error) {
+    dot.classList.add('err');
+    age.textContent = 'Error';
+    btn.disabled = false;
+    return;
+  }
+  btn.disabled = false;
+  if (!state.last_synced) { dot.classList.add('idle'); age.textContent = 'Not synced'; return; }
+  const mins = Math.round((Date.now() - new Date(state.last_synced)) / 60000);
+  let label = mins < 1 ? 'Just synced' : `${mins}m ago`;
+  if (state.auto_replied > 0) label += ` · ✨ ${state.auto_replied} auto-sent`;
+  age.textContent = label;
+}
+
+async function pollLiveSync() {
+  // 1. Refresh conversation list from disk
+  try {
+    const r = await fetch('/api/conversations');
+    if (r.ok) {
+      const data = await r.json();
+      // Detect new inbound messages since last poll
+      let newCount = 0;
+      data.forEach(c => {
+        const prev = _prevCounts[c.thread_id];
+        if (prev !== undefined && c.message_count > prev) newCount++;
+        _prevCounts[c.thread_id] = c.message_count;
+      });
+      if (newCount > 0) {
+        const pill = document.getElementById('newMsgPill');
+        pill.textContent = `+${newCount} new`;
+        pill.style.display = 'inline-flex';
+        setTimeout(() => { pill.style.display = 'none'; }, 8000);
+      }
+      CONVERSATIONS = data;
+      // Update badge
+      const badge = document.getElementById('convBadge');
+      if (data.length) { badge.textContent = data.length; badge.style.display = 'inline-flex'; }
+      if (currentView === 'messages') renderConvList();
+
+      // If a thread is open and got new messages (e.g. auto-reply sent), refresh it
+      if (activeThread) {
+        const updated = data.find(c => c.thread_id === activeThread.thread_id);
+        if (updated && updated.message_count > (activeThread.message_count || 0)) {
+          openThread(activeThread.thread_id);
+        }
+      }
+    }
+  } catch { /* ignore network errors */ }
+
+  // 2. Update sync status indicator
+  try {
+    const r = await fetch('/api/sync-status');
+    if (r.ok) _updateSyncDot(await r.json());
+  } catch { /* ignore */ }
+}
+
+async function manualSync() {
+  const btn = document.getElementById('btnSyncNow');
+  btn.disabled = true;
+  document.getElementById('syncAge').textContent = 'Starting…';
+  try {
+    await fetch('/api/trigger-sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ n: 19 }),   // full sync on manual trigger
+    });
+  } catch { /* ignore */ }
+  // start polling quickly to reflect running state
+  pollLiveSync();
+  const poll = setInterval(async () => {
+    await pollLiveSync();
+    try {
+      const r = await fetch('/api/sync-status');
+      if (r.ok) { const s = await r.json(); if (!s.running) clearInterval(poll); }
+    } catch { clearInterval(poll); }
+  }, 5000);
 }
 
 async function aiSuggestReply() {
@@ -1574,11 +2687,43 @@ async function sendConvReply() {
 }
 
 /* ═══════════════════════════════════════════════════
-   Boot + poll every 20s
+   Role tabs bar — vertical wheel scrolls it horizontally (it already has
+   overflow-x:auto, but with no visible scrollbar and no horizontal trackpad
+   gesture, the extra tabs just looked cut off with no way to reach them).
 ═══════════════════════════════════════════════════ */
-loadTemplates();
-fetchAll(false);
-setInterval(() => fetchAll(true), 20000);
+document.getElementById('roleTabs').addEventListener('wheel', (e) => {
+  if (e.deltaY === 0) return;
+  e.preventDefault();
+  e.currentTarget.scrollLeft += e.deltaY;
+}, { passive: false });
+
+/* ═══════════════════════════════════════════════════
+   Boot: check auth first, then load data
+═══════════════════════════════════════════════════ */
+(async () => {
+  const authed = await checkAuth();
+  if (authed) {
+    loadTemplates();
+    fetchAll(false);
+    pollLiveSync();
+  }
+})();
+// Adaptive live-refresh: 4 s while agent pipelines are active, 20 s when idle
+let _agentActive = false;
+(async function _liveLoop() {
+  while (true) {
+    await new Promise(r => setTimeout(r, _agentActive ? 4000 : 20000));
+    if (!_authUser) continue;
+
+    try {
+      const s = await fetch('/api/agent-status');
+      if (s.ok) { const d = await s.json(); _agentActive = d.active > 0; }
+    } catch { /* ignore */ }
+
+    await fetchAll(true);
+    await pollLiveSync();
+  }
+})();
 </script>
 </body>
 </html>
