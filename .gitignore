@@ -221,6 +221,11 @@ __marimo__/
 .env
 config/credentials.json
 config/session_state.json
+config/portal_users.json
+config/generated_criteria.json
+config/_login_status.txt
+config/runner_state.json
+config/sm/
 data/
 logs/
 

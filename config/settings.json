@@ -2,5 +2,10 @@
   "scheduling_link": "https://calendly.com/rmshomehealth/30min",
   "sender_name": "Ayesha",
   "sender_title": "Assistant Administrator",
-  "company": "Reliable Medical Services"
+  "company": "Reliable Medical Services",
+  "auto_mode_roles": {
+    "aXJpOi8vYXBpcy5pbmRlZWQuY29tL0VtcGxveWVySm9iL2I5YzI0NzY5LTE2MDYtNDk3MS1hMzAxLTkxOGM3M2Q0MTVjNA==": false,
+    "aXJpOi8vYXBpcy5pbmRlZWQuY29tL0VtcGxveWVySm9iLzBhMzkzNDE4LTAwMGMtNDM2Ny1hMDViLWI3YmQ2ZWNkYjExZQ==": false,
+    "aXJpOi8vYXBpcy5pbmRlZWQuY29tL0VtcGxveWVySm9iL2E4ZWNjMzRlLWVjNjUtNGUyYy05YjEwLWMyMzYwOWU4ZDJjMg==": false
+  }
 }
