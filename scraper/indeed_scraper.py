@@ -27,6 +27,12 @@ except ImportError:
     _PDFPLUMBER = False
 
 try:
+    from playwright_stealth.stealth import Stealth as _Stealth
+    _STEALTH = True
+except ImportError:
+    _STEALTH = False
+
+try:
     import pytesseract
     pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
     _TESSERACT = True
@@ -41,7 +47,7 @@ from scraper.utils import (
     SESSION_STATE_FILE, CANDIDATES_DIR, JOBS_URL, CONFIG_DIR,
     get_logger, load_credentials, load_last_run, save_last_run,
     load_candidates_index, save_candidates_index,
-    append_audit_log, save_json, now_iso,
+    append_audit_log, save_json, load_json, now_iso,
     load_status_counts, save_status_counts,
 )
 
@@ -50,7 +56,7 @@ log = get_logger("indeed_scraper")
 RESUMES_DIR    = CANDIDATES_DIR.parent / "resumes"
 JD_FILE        = CONFIG_DIR / "job_descriptions.json"
 VALID_STATUSES = {"New", "Reviewing", "Contacting", "Interviewing",
-                  "Rejected", "Hired", "Invited", "Pending"}
+                  "Rejected", "Hired", "Invited", "Pending", "Withdrawn"}
 HEADER_NAMES   = {"Candidates", "Name", "Status"}
 
 
@@ -67,6 +73,19 @@ def _eid_slug(eid: str) -> str:
 
 def _pause(lo: float, hi: float):
     time.sleep(random.uniform(lo, hi))
+
+
+def _debug_verify_saved(out_path: Path, label: str):
+    """Re-stat the file we just wrote so disappearing-candidate reports can be
+    root-caused from the log alone: absolute path actually used + on-disk proof.
+    """
+    try:
+        resolved = out_path.resolve()
+        ok = resolved.exists()
+        size = resolved.stat().st_size if ok else -1
+        log.info(f"  [debug-verify] {label}: {resolved} exists={ok} size={size} CANDIDATES_DIR={CANDIDATES_DIR.resolve()}")
+    except Exception as e:
+        log.warning(f"  [debug-verify] {label}: FAILED to verify {out_path}: {e}")
 
 def _dismiss_popup(page: Page):
     try:
@@ -354,7 +373,7 @@ def is_session_valid(page: Page) -> bool:
 # ── job listing ───────────────────────────────────────────────────────────────
 
 def get_jobs(page: Page) -> list[dict]:
-    """Return all open+paused jobs (cancelled excluded by JOBS_URL filter)."""
+    """Return all jobs. Tries live page first; falls back to stored job_descriptions.json."""
     log.info("Scanning jobs table...")
     page.goto(JOBS_URL, wait_until="domcontentloaded", timeout=30_000)
     _pause(1.5, 2.5)
@@ -363,13 +382,12 @@ def get_jobs(page: Page) -> list[dict]:
     seen_ids: set[str] = set()
 
     try:
-        # state="attached" — element exists in DOM even if not in viewport
         try:
-            page.wait_for_selector("[data-testid='UnifiedJobTldLink']", timeout=40_000, state="attached")
-        except Exception:
-            # One retry: wait for network idle then try again
-            page.wait_for_load_state("networkidle", timeout=15_000)
             page.wait_for_selector("[data-testid='UnifiedJobTldLink']", timeout=20_000, state="attached")
+        except Exception:
+            page.wait_for_load_state("networkidle", timeout=10_000)
+            page.wait_for_selector("[data-testid='UnifiedJobTldLink']", timeout=15_000, state="attached")
+
         prev = 0
         for _ in range(10):
             page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
@@ -389,9 +407,35 @@ def get_jobs(page: Page) -> list[dict]:
             if eid and eid not in seen_ids:
                 seen_ids.add(eid)
                 jobs.append({"title": title, "employer_job_id": eid})
-                log.info(f"  • {title}")
+                log.info(f"  - {title}")
     except Exception as e:
         log.warning(f"Job scan error: {e}")
+
+    # Screenshot for debugging when live scan fails
+    if not jobs:
+        try:
+            snap_dir = CANDIDATES_DIR.parent / "screenshots"
+            snap_dir.mkdir(parents=True, exist_ok=True)
+            snap_path = snap_dir / "debug_jobs_page.png"
+            page.screenshot(path=str(snap_path), full_page=True)
+            log.info(f"Debug screenshot saved: {snap_path}")
+        except Exception as se:
+            log.warning(f"Could not save debug screenshot: {se}")
+
+    # Fallback: use job IDs already stored in job_descriptions.json
+    if not jobs and JD_FILE.exists():
+        try:
+            stored = json.loads(JD_FILE.read_text(encoding="utf-8"))
+            for eid, data in stored.items():
+                if eid not in seen_ids:
+                    title = data.get("title", "Unknown")
+                    jobs.append({"title": title, "employer_job_id": eid})
+                    seen_ids.add(eid)
+                    log.info(f"  • {title} (from stored JD)")
+            if jobs:
+                log.info(f"Live scan found no jobs — using {len(jobs)} stored job(s) as fallback")
+        except Exception as fe:
+            log.warning(f"JD fallback failed: {fe}")
 
     log.info(f"Total active job(s): {len(jobs)}")
     return jobs
@@ -409,25 +453,70 @@ SCRAPE_TABS: list[tuple[str, str]] = [
 ]
 
 
-def _click_tab(page: Page, tab_name: str) -> bool:
+def _click_tab(page: Page, tab_name: str, retries: int = 2) -> bool:
     """Click a status filter tab by name. Returns True if found and clicked."""
     # Indeed uses <label> radio elements for tabs.
     # Count the parent locator (not .first) to avoid Playwright's .first.count()==1 quirk.
-    candidates = [
-        page.locator("label").filter(has_text=tab_name),
-        page.locator("label").filter(has_text=re.compile(rf"\b{re.escape(tab_name)}\b", re.I)),
-        page.get_by_text(tab_name, exact=False),
-    ]
-    for loc in candidates:
+    for attempt in range(retries):
+        _dismiss_popup(page)
         try:
-            if loc.count() > 0:
-                loc.first.scroll_into_view_if_needed()
-                loc.first.click()
-                _pause(1.5, 2.5)
-                return True
+            page.keyboard.press("Home")
         except Exception:
             pass
+        candidates = [
+            page.locator("label").filter(has_text=tab_name),
+            page.locator("label").filter(has_text=re.compile(rf"\b{re.escape(tab_name)}\b", re.I)),
+            page.get_by_text(tab_name, exact=False),
+        ]
+        for loc in candidates:
+            try:
+                if loc.count() > 0:
+                    loc.first.scroll_into_view_if_needed()
+                    loc.first.click()
+                    _pause(1.5, 2.5)
+                    return True
+            except Exception:
+                pass
+        if attempt < retries - 1:
+            log.debug(f"  '{tab_name}' tab not found on attempt {attempt + 1} — retrying")
+            _pause(1.0, 2.0)
     return False
+
+
+_LIST_CONTAINER_SEL = "[data-testid='candidate-list-table-container']"
+
+
+def _find_row_by_name(page: Page, target_name: str, max_scrolls: int = 12):
+    """Find a candidate row by name in a (possibly virtualized) list,
+    scrolling the container incrementally until it renders. Returns the row
+    locator, or None if not found after scrolling through the whole list."""
+    container = page.locator(_LIST_CONTAINER_SEL).first
+    try:
+        container.evaluate("el => el.scrollTo(0, 0)")
+    except Exception:
+        pass
+
+    for _ in range(max_scrolls):
+        rows = page.locator(f"{_LIST_CONTAINER_SEL} [role='row']").all()
+        for row in rows:
+            try:
+                lines = [l.strip() for l in row.inner_text().strip().split("\n") if l.strip()]
+            except Exception:
+                continue
+            if lines and lines[0] == target_name:
+                return row
+        try:
+            scrolled = container.evaluate(
+                "el => { const before = el.scrollTop; "
+                "el.scrollBy(0, el.clientHeight * 0.8); "
+                "return el.scrollTop > before; }"
+            )
+        except Exception:
+            break
+        page.wait_for_timeout(400)
+        if not scrolled:
+            break
+    return None
 
 
 def go_all_candidates(page: Page, job: dict) -> tuple[str, dict] | None:
@@ -436,23 +525,10 @@ def go_all_candidates(page: Page, job: dict) -> tuple[str, dict] | None:
     title = job["title"]
     eid   = job["employer_job_id"]
 
-    page.goto(JOBS_URL, wait_until="domcontentloaded", timeout=30_000)
-    _pause(1.5, 2.5)
-    page.wait_for_selector("[data-testid='UnifiedJobTldLink']", timeout=40_000, state="attached")
-
-    # ── Click the job link to reach the candidates page ─────────────────────
-    job_link = None
-    for lnk in page.locator("[data-testid='UnifiedJobTldLink']").all():
-        href = lnk.get_attribute("href") or ""
-        if parse_qs(urlparse(href).query).get("employerJobId", [""])[0] == eid:
-            job_link = lnk
-            break
-
-    if job_link is None:
-        log.warning(f"Link not found for {title!r}")
-        return None
-
-    job_link.click()
+    # Navigate directly to the candidates page using the employer job ID.
+    # Avoids re-visiting JOBS_URL which triggers bot detection on repeated visits.
+    candidates_url = f"https://employers.indeed.com/candidates?employerJobId={eid}"
+    page.goto(candidates_url, wait_until="domcontentloaded", timeout=30_000)
     _pause(2.5, 4.5)
     _dismiss_popup(page)
 
@@ -461,31 +537,36 @@ def go_all_candidates(page: Page, job: dict) -> tuple[str, dict] | None:
         return None
 
     # ── Ensure we're on the candidates list ──────────────────────────────────
-    # After clicking the job link we may land on the posting edit page.
-    # Navigate to candidates via the sidebar link if needed.
-    if "[data-testid='candidate-list-table-container']" not in (page.content()[:200] or ""):
-        try:
-            page.wait_for_selector("[data-testid='candidate-list-table-container']", timeout=8_000)
-        except Exception:
-            # Not there — try sidebar "Candidates" / "Manage candidates" nav link
-            for nav_sel in [
-                "[data-testid='candidates-pipeline-hosted-all-link']",
-                "[data-testid='menu-link-Candidates']",
-                "a[href*='candidates']",
-            ]:
-                try:
-                    nav = page.locator(nav_sel).first
-                    if nav.count() > 0:
-                        nav.click()
-                        _pause(1.5, 2.5)
-                        page.wait_for_selector("[data-testid='candidate-list-table-container']", timeout=20_000)
-                        break
-                except Exception:
-                    pass
+    try:
+        page.wait_for_selector("[data-testid='candidate-list-table-container']", timeout=8_000)
+    except Exception:
+        # May have landed on job view — try sidebar nav to candidates section
+        for nav_sel in [
+            "[data-testid='candidates-pipeline-hosted-all-link']",
+            "[data-testid='menu-link-Candidates']",
+            "a[href*='candidates']",
+        ]:
+            try:
+                nav = page.locator(nav_sel).first
+                if nav.count() > 0:
+                    nav.click()
+                    _pause(1.5, 2.5)
+                    page.wait_for_selector("[data-testid='candidate-list-table-container']", timeout=20_000)
+                    break
+            except Exception:
+                pass
 
     try:
         page.wait_for_selector("[data-testid='candidate-list-table-container']", timeout=8_000)
     except Exception:
+        # Save a debug screenshot so we can see what's on screen
+        try:
+            snap_dir = CANDIDATES_DIR.parent / "screenshots"
+            snap_dir.mkdir(parents=True, exist_ok=True)
+            page.screenshot(path=str(snap_dir / f"debug_candidates_{eid[:12]}.png"), full_page=True)
+            log.info(f"  Debug screenshot saved for {title!r} (URL: {page.url})")
+        except Exception:
+            pass
         log.warning(f"No candidates table for {title!r}")
         return None
 
@@ -654,9 +735,21 @@ def scrape_profile(page: Page, row_name: str, row_status: str,
 # ── JD pull ───────────────────────────────────────────────────────────────────
 
 def _extract_jd_text(page: Page) -> str:
-    """Extract JD from job detail page using selectors confirmed in debug_jd.py."""
+    """Extract JD from job detail page — tries multiple strategies for different layouts."""
     best = ""
-    for sel in [".css-1jpbxfu", ".css-19qk1my"]:
+
+    # Strategy 1a: semantic class (stable across CSS recompiles) — return immediately
+    try:
+        el = page.locator(".jd-appended-job-description").first
+        if el.count() > 0:
+            txt = el.inner_text().strip()
+            if len(txt) > 100:
+                return txt
+    except Exception:
+        pass
+
+    # Strategy 1b: hashed CSS classes — pick longest
+    for sel in [".css-1jpbxfu", ".css-19qk1my", ".css-15c5oio"]:
         try:
             for el in page.locator(sel).all():
                 txt = el.inner_text().strip()
@@ -667,7 +760,7 @@ def _extract_jd_text(page: Page) -> str:
     if len(best) > 100:
         return best
 
-    # Fallback: walk up from "Job description:" label
+    # Strategy 2: walk up from "Job description:" label
     try:
         label = page.get_by_text("Job description:", exact=False).first
         if label.count() > 0:
@@ -682,11 +775,170 @@ def _extract_jd_text(page: Page) -> str:
                     return txt.strip()
     except Exception:
         pass
+
+    # Strategy 3: data-testid patterns
+    for testid in ["job-description", "jobDescription", "job-details-description", "job-info-description"]:
+        try:
+            el = page.locator(f"[data-testid='{testid}']").first
+            if el.count() > 0:
+                txt = el.inner_text().strip()
+                if len(txt) > 100:
+                    return txt
+        except Exception:
+            pass
+
+    # Strategy 4: largest div/section/article that contains "Job description"
+    try:
+        containers = page.locator("div, section, article").all()
+        for c in containers:
+            try:
+                txt = c.inner_text()
+                if "Job description" in txt and len(txt) > len(best):
+                    best = txt
+            except Exception:
+                continue
+        if len(best) > 200:
+            return best.strip()
+    except Exception:
+        pass
+
+    # Strategy 5: longest text block anywhere on the page (last resort)
+    try:
+        result = page.evaluate("""() => {
+            let best = '';
+            document.querySelectorAll('[class]').forEach(el => {
+                const txt = (el.innerText || '').trim();
+                if (txt.length > best.length && txt.length < 15000) best = txt;
+            });
+            return best;
+        }""")
+        if result and len(result) > 300:
+            return result.strip()
+    except Exception:
+        pass
+
     return ""
 
 
+def _extract_date_posted(body: str) -> str:
+    """Pull the 'Date posted: <date>' line that Indeed always renders on the
+    job detail page, right before Pay/Job description.
+    """
+    m = re.search(r"Date posted:\s*([A-Za-z]+ \d{1,2},?\s*\d{4})", body)
+    return m.group(1).strip() if m else ""
+
+
+def _extract_jd_from_body(body: str) -> str:
+    """Extract JD from raw page body text using text markers — works when CSS selectors fail."""
+    import re
+
+    # Find 'Job description' header (Indeed always renders this label)
+    for marker in ["Job description:\n", "Job description:", "Job Description:\n", "Job Description:"]:
+        idx = body.find(marker)
+        if idx != -1:
+            text = body[idx + len(marker):]
+            # Cut off at known footer boilerplate
+            for cutoff in [
+                "All analytics data provided",
+                "Indeed reserves the right",
+                "This information does not",
+                "Report this job",
+                "Save this job",
+                "Apply now",
+                "\nSign in\n",
+            ]:
+                ci = text.find(cutoff)
+                if ci != -1:
+                    text = text[:ci]
+            text = text.strip()
+            if len(text) > 100:
+                return text
+
+    # Fallback: find largest paragraph-style block (>200 chars, not UI chrome)
+    blocks = re.split(r"\n{2,}", body)
+    best = ""
+    for block in blocks:
+        block = block.strip()
+        if len(block) > len(best) and len(block) < 8000 and "\n" in block:
+            best = block
+    return best if len(best) > 200 else ""
+
+
+def _return_to_jobs_list(page: Page):
+    """Get back to the jobs list with all links rendered, preferring
+    page.go_back() over a fresh page.goto(JOBS_URL).
+
+    A fresh top-level GET to the same URL right after a previous one is
+    exactly the pattern that gets flagged: confirmed via screenshot during
+    a real run that the *second* _load_jobs_list() reload in a row served
+    Indeed's Cloudflare "Additional Verification Required" challenge instead
+    of the jobs page. go_back() replays browser history instead of issuing a
+    new request, so it doesn't trip the same heuristic.
+    """
+    try:
+        page.go_back(wait_until="domcontentloaded", timeout=15_000)
+        page.wait_for_selector("[data-testid='UnifiedJobTldLink']", timeout=10_000, state="attached")
+    except Exception:
+        log.warning("  go_back() didn't land on the jobs list — falling back to full reload")
+        _load_jobs_list(page)
+        return
+
+    _pause(1.0, 1.5)
+    # go_back() can restore mid-scroll state — finish scrolling to render the rest.
+    prev = page.locator("[data-testid='UnifiedJobTldLink']").count()
+    for _ in range(10):
+        page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+        page.wait_for_timeout(1200)
+        count = page.locator("[data-testid='UnifiedJobTldLink']").count()
+        if count == prev:
+            break
+        prev = count
+
+
+def _load_jobs_list(page: Page):
+    """Navigate to JOBS_URL and scroll until all job links are loaded.
+    Uses the same logic as get_jobs() so links are guaranteed to appear.
+    """
+    page.goto(JOBS_URL, wait_until="domcontentloaded", timeout=30_000)
+    try:
+        page.wait_for_selector(
+            "[data-testid='UnifiedJobTldLink']", timeout=20_000, state="attached"
+        )
+    except Exception:
+        try:
+            page.wait_for_load_state("networkidle", timeout=10_000)
+        except Exception:
+            pass
+        try:
+            page.wait_for_selector(
+                "[data-testid='UnifiedJobTldLink']", timeout=15_000, state="attached"
+            )
+        except Exception:
+            pass
+    # Scroll to load all links (same as get_jobs)
+    prev = 0
+    for _ in range(10):
+        page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+        page.wait_for_timeout(1200)
+        count = page.locator("[data-testid='UnifiedJobTldLink']").count()
+        if count == prev:
+            break
+        prev = count
+
+
 def pull_job_descriptions(page: Page, jobs: list[dict]):
-    """Pull JD for every job that isn't already cached in config/job_descriptions.json."""
+    """Pull JD for every job that isn't already cached in config/job_descriptions.json.
+
+    Navigates via real link clicks from the jobs list (like a human browsing),
+    NOT a raw fetch() to /jobs/view?employerJobId=... — Cloudflare returns
+    HTTP 403 ("Security Check") on back-to-back fetch() calls fired with no
+    delay between them (confirmed via diagnostic logging: every uncached job
+    in a same-run burst got 403'd, while clicking through the same job in a
+    real browser renders the JD with no challenge at all).
+
+    Called immediately after get_jobs(), so the page is already on JOBS_URL
+    with all job links loaded — no need to re-navigate at the start.
+    """
     existing: dict = {}
     if JD_FILE.exists():
         try:
@@ -694,57 +946,169 @@ def pull_job_descriptions(page: Page, jobs: list[dict]):
         except Exception:
             pass
 
-    updated = False
+    def _is_complete(eid: str) -> bool:
+        e = existing.get(eid, {})
+        return bool(e.get("job_description") and e.get("date_posted"))
+
     for job in jobs:
+        if _is_complete(job["employer_job_id"]):
+            log.info(f"  JD cached: {job['title']}")
+
+    # Jobs cached before date_posted was tracked get one re-pull to backfill it.
+    jobs_to_pull = [j for j in jobs if not _is_complete(j["employer_job_id"])]
+    if not jobs_to_pull:
+        return
+
+    updated = False
+    # The caller (get_jobs(), per this function's docstring) already navigated
+    # to JOBS_URL and scrolled every link into view — reuse that for the first
+    # iteration instead of immediately re-navigating to the same URL we're
+    # already sitting on. Back-to-back navigations to the same page in quick
+    # succession is the exact pattern that got the old fetch()-based JD pull
+    # 403'd by Cloudflare; only reload once we've actually clicked away.
+    on_list_page = True
+
+    for job in jobs_to_pull:
         title = job["title"]
         eid   = job["employer_job_id"]
-
-        if existing.get(eid, {}).get("job_description"):
-            log.info(f"  JD cached: {title}")
-            continue
-
         log.info(f"  Pulling JD: {title}")
         try:
-            nav_btn = page.locator("[data-testid='menu-link-AllJobs']").first
-            if nav_btn.count() > 0:
-                nav_btn.click()
-            else:
-                page.goto(JOBS_URL, wait_until="domcontentloaded", timeout=30_000)
-            _pause(1.5, 2.5)
-            page.wait_for_selector("[data-testid='UnifiedJobTldLink']", timeout=40_000, state="attached")
+            if not on_list_page:
+                _return_to_jobs_list(page)
+            on_list_page = True  # confirmed on the list now — no navigation has happened yet this iteration
 
-            clicked = False
-            for lnk in page.locator("[data-testid='UnifiedJobTldLink']").all():
-                href = lnk.get_attribute("href") or ""
-                if parse_qs(urlparse(href).query).get("employerJobId", [""])[0] == eid:
-                    lnk.click()
-                    clicked = True
+            target_link = None
+            for link in page.locator("[data-testid='UnifiedJobTldLink']").all():
+                href = link.get_attribute("href") or ""
+                if "employerJobId=" not in href:
+                    continue
+                params = parse_qs(urlparse(href).query)
+                if params.get("employerJobId", [""])[0] == eid:
+                    target_link = link
                     break
 
-            if not clicked:
-                log.warning(f"  Could not navigate to {title!r} for JD pull")
-                continue
+            if target_link is None:
+                log.warning(f"  JD pull: link not found for {title!r} (job no longer listed?)")
+                try:
+                    snap_dir = CANDIDATES_DIR.parent / "screenshots"
+                    snap_dir.mkdir(parents=True, exist_ok=True)
+                    snap_path = snap_dir / f"jd_link_not_found_{eid[-10:]}.png"
+                    page.screenshot(path=str(snap_path), full_page=True)
+                    log.info(f"  Debug screenshot: {snap_path}")
+                except Exception:
+                    pass
+                continue  # still on_list_page=True — no navigation happened, correctly skip the reload next time
 
-            _pause(2.5, 3.5)
+            target_link.click()
+            on_list_page = False  # navigated away to the job detail page
+            _pause(1.5, 2.5)
+            try:
+                page.wait_for_selector("text=Job description", timeout=10_000)
+            except Exception:
+                pass
+
+            try:
+                body = page.evaluate("document.body.innerText || document.body.textContent || ''")
+            except Exception:
+                body = ""
+
+            date_posted = _extract_date_posted(body)
+
             jd = _extract_jd_text(page)
-            if jd:
-                log.info(f"  ✓ JD pulled ({len(jd)} chars)")
+            if not jd or len(jd) < 100:
+                jd = _extract_jd_from_body(body)
+
+            if jd and len(jd) > 100:
+                log.info(f"  JD pulled ({len(jd)} chars, posted={date_posted or 'unknown'})")
                 existing[eid] = {
                     "title": title,
                     "employer_job_id": eid,
                     "job_description": jd,
+                    "date_posted": date_posted,
                 }
                 updated = True
             else:
-                log.warning(f"  ✗ JD empty for {title!r}")
+                log.warning(f"  JD empty for {title!r} (click-through extraction returned {len(jd or '')} chars)")
+
+            _pause(1.0, 2.0)  # human-like gap between job-detail visits; next loop reloads the list
+
         except Exception as e:
             log.warning(f"  JD pull error [{title}]: {e}")
+            on_list_page = False  # state is uncertain after an exception — force a reload next time
 
     if updated:
         JD_FILE.write_text(
             json.dumps(existing, indent=2, ensure_ascii=False), encoding="utf-8"
         )
         log.info(f"  JDs saved → {JD_FILE}")
+
+
+# ── quick "any new candidates?" check ────────────────────────────────────────
+
+def has_new_candidates() -> bool:
+    """
+    Open the All tab for the first job, read the first candidate's Indeed ID,
+    and check whether they are already in our CANDIDATES_DIR.
+    Returns True if new candidates exist, False if we can skip the full scrape.
+    """
+    if not SESSION_STATE_FILE.exists():
+        return False
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=True,
+                args=["--disable-blink-features=AutomationControlled"],
+            )
+            ctx = browser.new_context(
+                storage_state=str(SESSION_STATE_FILE),
+                user_agent=(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/131.0.0.0 Safari/537.36"
+                ),
+            )
+            page = ctx.new_page()
+
+            jobs = get_jobs(page)  # navigates to JOBS_URL internally
+
+            if not is_session_valid(page):
+                browser.close()
+                return False
+            if not jobs:
+                browser.close()
+                return False
+
+            job = jobs[0]
+            result = go_all_candidates(page, job)
+            if result is None:
+                browser.close()
+                return True  # can't tell — assume yes
+
+            base_url, _ = result
+            # Navigate to All tab and read the first candidate row
+            try:
+                page.goto(f"{base_url}&status=all", wait_until="domcontentloaded", timeout=20_000)
+                _pause(1, 2)
+                first_row = page.locator("tr[data-indeed-id], [data-testid='candidate-row']").first
+                indeed_id = (
+                    first_row.get_attribute("data-indeed-id") or
+                    first_row.get_attribute("data-id") or ""
+                )
+            except Exception:
+                indeed_id = ""
+
+            browser.close()
+
+            if not indeed_id:
+                return True  # can't tell — assume yes
+
+            # Check if this candidate is already in our DB
+            existing = list(CANDIDATES_DIR.glob(f"*{indeed_id}*.json"))
+            return len(existing) == 0  # True = new, False = already seen
+
+    except Exception as e:
+        log.warning(f"has_new_candidates check failed: {e}")
+        return True  # assume yes on error
 
 
 # ── core scrape logic (callable from pipeline) ────────────────────────────────
@@ -804,16 +1168,15 @@ def run(
             ),
         )
         page = context.new_page()
+        if _STEALTH:
+            _Stealth().apply_stealth_sync(page)
 
-        page.goto(JOBS_URL, wait_until="domcontentloaded", timeout=30_000)
-        _pause(1.5, 2.5)
+        jobs = get_jobs(page)  # navigates to JOBS_URL internally
 
         if not is_session_valid(page):
             log.error(f"Session invalid. URL: {page.url}. Re-run: python scraper/indeed_login.py")
             browser.close()
             return
-
-        jobs = get_jobs(page)
         if not jobs:
             log.error("No active jobs found.")
             browser.close()
@@ -831,6 +1194,18 @@ def run(
             log.info(f"\n{'='*60}")
             log.info(f"[{job_idx}/{len(jobs)}] {title}")
             log.info(f"{'='*60}")
+
+            # Name -> (path, data) for everyone already saved under this job.
+            # Lets us tell "unchanged" / "moved tabs" / "genuinely new" apart
+            # from the row alone, with zero browser navigation for the first
+            # two cases — only a truly new name needs its profile opened.
+            job_slug = hashlib.md5(eid.encode()).hexdigest()[:8]
+            existing_by_name: dict[str, dict] = {}
+            for f in CANDIDATES_DIR.glob(f"*-{job_slug}.json"):
+                d = load_json(f, {})
+                name = d.get("full_name")
+                if name:
+                    existing_by_name[name] = {"path": f, "data": d}
 
             if ask_roles:
                 mins = int(role_timeout / 60)
@@ -852,13 +1227,18 @@ def run(
 
             base_url, job_counts = result
 
-            # In new-only cron mode, skip silently if Indeed shows 0 new
-            if new_only and job_counts.get("new", 1) == 0:
-                log.info(f"  No new candidates — skipping")
+            # Compare against the last-known counts for this job *before*
+            # overwriting them, so incremental runs can tell which tabs moved
+            # since last time (a candidate can change status — e.g. Rejected
+            # -> Reviewing — without "new" ever changing, and new_only mode
+            # used to only ever look at the New tab, missing that entirely).
+            all_counts = load_status_counts()
+            old_counts = all_counts.get(eid, {}).get("counts", {})
+
+            if new_only and job_counts == old_counts:
+                log.info(f"  No changes since last run — skipping")
                 continue
 
-            # Persist latest Indeed tab counts for this job
-            all_counts = load_status_counts()
             all_counts[eid] = {
                 "title":      title,
                 "updated_at": now_iso(),
@@ -866,12 +1246,24 @@ def run(
             }
             save_status_counts(all_counts)
 
-            job_new   = 0
-            job_skip  = 0
+            job_new       = 0
+            job_skip      = 0
+            job_updated   = 0
+            job_withdrawn = 0
             job_paths: list[Path] = []
 
-            # Which tabs to visit: new-only cron vs full scrape
-            tabs_to_scrape = [("New", "new")] if new_only else SCRAPE_TABS
+            # Which tabs to visit: full scrape visits everything; incremental
+            # runs only revisit tabs whose count actually changed since the
+            # last run (covers candidates moving between statuses, not just
+            # new applicants).
+            if new_only:
+                tabs_to_scrape = [
+                    (tab_name, tab_status) for tab_name, tab_status in SCRAPE_TABS
+                    if job_counts.get(tab_status, 0) != old_counts.get(tab_status, 0)
+                ]
+                log.info(f"  Changed tabs: {[t for t, _ in tabs_to_scrape] or 'none'}")
+            else:
+                tabs_to_scrape = SCRAPE_TABS
 
             for tab_name, tab_status in tabs_to_scrape:
                 tab_count = job_counts.get(tab_status, 0)
@@ -883,6 +1275,15 @@ def run(
 
                 if not _click_tab(page, tab_name):
                     log.warning(f"  Could not click '{tab_name}' tab — skipping")
+                    try:
+                        snap_dir = CANDIDATES_DIR.parent / "screenshots"
+                        snap_dir.mkdir(parents=True, exist_ok=True)
+                        page.screenshot(
+                            path=str(snap_dir / f"debug_tab_{tab_name.lower()}_{eid[:12]}.png"),
+                            full_page=True,
+                        )
+                    except Exception:
+                        pass
                     continue
 
                 try:
@@ -928,30 +1329,181 @@ def run(
                         log.info(f"  --n {n_candidates}: picked {len(page_candidates)} from [{tab_name}]")
 
                     for cand_name, cand_status in page_candidates:
-                        try:
-                            rows = page.locator(
-                                "[data-testid='candidate-list-table-container'] [role='row']"
-                            ).all()
-                            clicked = False
-                            for row in rows:
-                                lines = [l.strip() for l in row.inner_text().strip().split("\n") if l.strip()]
-                                if not lines or lines[0] in HEADER_NAMES or lines[0] != cand_name:
-                                    continue
-                                row.locator("td").first.click()
-                                _pause(2.0, 3.5)
-                                clicked = True
-                                break
-
-                            if not clicked:
+                        if cand_status == "Withdrawn":
+                            # No profile to open — Indeed renders these as inert
+                            # rows with no action icons or click target. Record
+                            # a minimal entry instead of treating it as a
+                            # clickable candidate (which silently breaks back-
+                            # navigation for whoever comes after it in the list).
+                            if cand_name in existing_by_name:
+                                log.info(f"  [withdrawn] Already recorded: {cand_name}")
                                 continue
+
+                            indeed_id = f"indeed-{hashlib.md5(cand_name.encode()).hexdigest()[:12]}"
+                            seen_key  = f"{indeed_id}:{eid}"
+                            out_path  = CANDIDATES_DIR / f"{indeed_id}-{job_slug}.json"
+                            candidate_data = {
+                                "id":         indeed_id,
+                                "source":     "indeed",
+                                "scraped_at": now_iso(),
+                                "full_name":  cand_name,
+                                "status":     "withdrawn",
+                                "job_id":     eid,
+                                "job_title":  title,
+                            }
+                            save_json(out_path, candidate_data)
+                            _debug_verify_saved(out_path, f"withdrawn:{cand_name}")
+                            log.info(f"  [withdrawn] Recorded (no profile to scrape): {cand_name}")
+
+                            if on_candidate_saved:
+                                on_candidate_saved(out_path)
+
+                            candidates_index.append({
+                                "id":         indeed_id,
+                                "full_name":  cand_name,
+                                "source":     "indeed",
+                                "scraped_at": candidate_data["scraped_at"],
+                                "status":     "withdrawn",
+                                "job_title":  title,
+                                "fit_score":  None,
+                            })
+                            append_audit_log({
+                                "event":     "candidate_withdrawn",
+                                "id":        indeed_id,
+                                "full_name": cand_name,
+                                "status":    "withdrawn",
+                                "job_id":    eid,
+                                "job_title": title,
+                            })
+
+                            seen_keys.add(seen_key)
+                            existing_by_name[cand_name] = {"path": out_path, "data": candidate_data}
+                            job_withdrawn += 1
+                            job_paths.append(out_path)
+                            continue
+
+                        existing_entry = existing_by_name.get(cand_name)
+                        if existing_entry is not None:
+                            existing    = existing_entry["data"]
+                            out_path    = existing_entry["path"]
+                            old_status  = (existing.get("status") or "").lower()
+                            new_status  = cand_status.lower()
+                            indeed_id   = existing.get("id", "")
+                            seen_key    = f"{indeed_id}:{eid}"
+
+                            if old_status == new_status:
+                                job_skip += 1
+                                continue
+
+                            existing["status"]     = new_status
+                            existing["scraped_at"] = now_iso()
+                            save_json(out_path, existing)
+                            _debug_verify_saved(out_path, f"status-update:{cand_name}")
+                            log.info(f"  [status] {cand_name}: {old_status} -> {new_status}")
+
+                            for entry in candidates_index:
+                                if entry.get("id") == indeed_id:
+                                    entry["status"] = new_status
+                                    break
+                            append_audit_log({
+                                "event":      "candidate_status_updated",
+                                "id":         indeed_id,
+                                "full_name":  cand_name,
+                                "old_status": old_status,
+                                "new_status": new_status,
+                                "job_id":     eid,
+                                "job_title":  title,
+                            })
+
+                            seen_keys.add(seen_key)
+                            job_updated += 1
+                            continue
+
+                        try:
+                            row = _find_row_by_name(page, cand_name)
+
+                            if row is None:
+                                # List/tab state may have been lost after the previous
+                                # "back" navigation — reload and re-click the tab, then
+                                # retry once before giving up on this candidate.
+                                page.goto(tab_url, wait_until="domcontentloaded", timeout=30_000)
+                                _pause(1.5, 2.5)
+                                _dismiss_popup(page)
+                                _click_tab(page, tab_name)
+                                page.wait_for_selector(_LIST_CONTAINER_SEL, timeout=15_000)
+                                row = _find_row_by_name(page, cand_name)
+
+                            if row is None:
+                                log.warning(f"  [no-match] Row for {cand_name!r} not found in DOM — skipping")
+                                continue
+
+                            row.locator("td").first.click()
+                            _pause(2.0, 3.5)
 
                             candidate_data = scrape_profile(page, cand_name, cand_status, eid, title)
                             indeed_id = candidate_data["id"]
                             seen_key  = f"{indeed_id}:{eid}"
+                            out_path  = CANDIDATES_DIR / f"{indeed_id}-{job_slug}.json"
 
                             if seen_key in seen_keys:
-                                log.info(f"  ✓ Already saved: {cand_name} — skipping")
-                                job_skip += 1
+                                existing = load_json(out_path, {})
+                                old_status = (existing.get("status") or "").lower()
+                                new_status = (candidate_data.get("status") or "").lower()
+
+                                if not existing:
+                                    # seen_keys says we've processed this id:job pair
+                                    # before, but there's no file on disk for it (stale
+                                    # last_run.json entry, or a previous save never
+                                    # actually persisted) — recover instead of treating
+                                    # it as "already saved" forever and going invisible.
+                                    save_json(out_path, candidate_data)
+                                    _debug_verify_saved(out_path, f"recovered-missing:{cand_name}")
+                                    log.warning(f"  [recovered] {cand_name}: seen_key was stale (no file on disk) — saved fresh")
+                                    if on_candidate_saved:
+                                        on_candidate_saved(out_path)
+                                    candidates_index.append({
+                                        "id":         indeed_id,
+                                        "full_name":  candidate_data["full_name"],
+                                        "source":     "indeed",
+                                        "scraped_at": candidate_data["scraped_at"],
+                                        "status":     candidate_data["status"],
+                                        "job_title":  title,
+                                        "fit_score":  None,
+                                    })
+                                    append_audit_log({
+                                        "event":     "candidate_scraped",
+                                        "id":        indeed_id,
+                                        "full_name": candidate_data["full_name"],
+                                        "status":    candidate_data["status"],
+                                        "job_id":    eid,
+                                        "job_title": title,
+                                    })
+                                    job_new += 1
+                                elif old_status != new_status:
+                                    existing["status"]     = new_status
+                                    existing["scraped_at"] = candidate_data["scraped_at"]
+                                    save_json(out_path, existing)
+                                    _debug_verify_saved(out_path, f"status-update-seen:{cand_name}")
+                                    log.info(f"  [status] {cand_name}: {old_status} -> {new_status}")
+
+                                    for entry in candidates_index:
+                                        if entry.get("id") == indeed_id:
+                                            entry["status"] = new_status
+                                            break
+                                    append_audit_log({
+                                        "event":     "candidate_status_updated",
+                                        "id":        indeed_id,
+                                        "full_name": cand_name,
+                                        "old_status": old_status,
+                                        "new_status": new_status,
+                                        "job_id":    eid,
+                                        "job_title": title,
+                                    })
+                                    job_updated += 1
+                                else:
+                                    log.info(f"  [skip] Already saved: {cand_name}")
+                                    job_skip += 1
+
                                 back = page.locator("[data-testid='BackToListButton']").first
                                 if back.count() > 0:
                                     back.click()
@@ -960,10 +1512,9 @@ def run(
                                 _pause(1.5, 2.5)
                                 continue
 
-                            job_slug = hashlib.md5(eid.encode()).hexdigest()[:8]
-                            out_path = CANDIDATES_DIR / f"{indeed_id}-{job_slug}.json"
                             save_json(out_path, candidate_data)
-                            log.info(f"  + Saved: {cand_name} [{tab_name}→{cand_status}]")
+                            _debug_verify_saved(out_path, f"new:{cand_name}")
+                            log.info(f"  + Saved: {cand_name} [{tab_name} -> {cand_status}]")
 
                             if on_candidate_saved:
                                 on_candidate_saved(out_path)
@@ -987,6 +1538,7 @@ def run(
                             })
 
                             seen_keys.add(seen_key)
+                            existing_by_name[cand_name] = {"path": out_path, "data": candidate_data}
                             job_new   += 1
                             total_new += 1
                             job_paths.append(out_path)
@@ -1046,7 +1598,8 @@ def run(
 
             log.info(
                 f"[{job_idx}/{len(jobs)}] {title} — DONE "
-                f"({job_new} new, {job_skip} already saved)"
+                f"({job_new} new, {job_skip} already saved, {job_updated} status updates, "
+                f"{job_withdrawn} withdrawn)"
             )
 
             if on_job_done:

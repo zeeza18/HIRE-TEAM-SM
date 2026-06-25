@@ -13,8 +13,8 @@ ROOT = Path(__file__).parent.parent
 load_dotenv(ROOT / ".env")          # load .env once when utils is imported
 
 CONFIG_DIR = ROOT / "config"
-DATA_DIR = ROOT / "data"
-LOGS_DIR = ROOT / "logs"
+DATA_DIR   = ROOT / "data" / "rms"
+LOGS_DIR   = ROOT / "logs"
 
 CREDENTIALS_FILE = CONFIG_DIR / "credentials.json"
 SESSION_STATE_FILE = CONFIG_DIR / "session_state.json"
@@ -27,7 +27,7 @@ STATUS_COUNTS_FILE = DATA_DIR / "job_status_counts.json"
 
 JOBS_URL = (
     "https://employers.indeed.com/jobs"
-    "?status=open%2Cpaused&claimed=false&createdOnIndeed=true"
+    "?status=open%2Cpaused%2Cflagged"
     "&tab=0&sortDirection=DESC&sortField=datePostedOnIndeed"
 )
 
@@ -45,7 +45,12 @@ def get_logger(name: str) -> logging.Logger:
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(fmt)
 
-    ch = logging.StreamHandler(sys.stdout)
+    import io as _io
+    _stdout = (
+        _io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace", line_buffering=True)
+        if hasattr(sys.stdout, "buffer") else sys.stdout
+    )
+    ch = logging.StreamHandler(_stdout)
     ch.setLevel(logging.INFO)
     ch.setFormatter(fmt)
 
@@ -73,9 +78,10 @@ def load_credentials() -> dict:
 
     # Overlay env vars — these always win over the JSON values
     env_map = {
-        "GROQ_API_KEY":     "groq_api_key",
+        "GROQ_API_KEY":      "groq_api_key",
+        "OPENAI_API_KEY":    "openai_api_key",
         "ANTHROPIC_API_KEY": "anthropic_api_key",
-        "INDEED_EMAIL":     "indeed_email",
+        "INDEED_EMAIL":      "indeed_email",
     }
     for env_var, key in env_map.items():
         val = os.environ.get(env_var, "").strip()
