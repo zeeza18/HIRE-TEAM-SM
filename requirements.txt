@@ -9,6 +9,7 @@ pytesseract>=0.3.10         # OCR fallback for scanned/image-based PDFs (needs T
 # --- AI screening (Week 2+) ---
 anthropic>=0.40.0            # Claude API for resume parsing + fit scoring
 groq>=0.9.0                  # Groq LLM API for fast candidate enrichment
+openai>=1.0.0                # OpenAI API for candidate scoring (score.py uses gpt-4o)
 
 # --- export + scheduler ---
 openpyxl>=3.1.0             # Excel file creation and update

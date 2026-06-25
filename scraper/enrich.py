@@ -25,7 +25,7 @@ from scraper.utils import CANDIDATES_DIR, get_logger, load_json, save_json, load
 
 log = get_logger("enrich")
 
-MODEL = "llama-3.1-8b-instant"
+MODEL = "gpt-4o-mini"
 
 # Fields this module owns — score.py must never touch these
 ENRICH_FIELDS = {"professional_summary", "experience", "certifications", "skills"}
@@ -136,18 +136,13 @@ def main():
     args = parser.parse_args()
 
     creds = load_credentials()
-    groq_key = creds.get("groq_api_key")
-    if not groq_key:
-        log.error("groq_api_key missing from config/credentials.json")
+    api_key = creds.get("openai_api_key")
+    if not api_key:
+        log.error("openai_api_key missing from config/credentials.json")
         sys.exit(1)
 
-    try:
-        from groq import Groq
-    except ImportError:
-        log.error("groq not installed — run: pip install groq")
-        sys.exit(1)
-
-    client = Groq(api_key=groq_key)
+    from openai import OpenAI
+    client = OpenAI(api_key=api_key)
     all_paths = sorted(CANDIDATES_DIR.glob("*.json"))
 
     if not all_paths:

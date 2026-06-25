@@ -35,7 +35,7 @@ from scraper.utils import (
 
 log = get_logger("score")
 
-MODEL = "llama-3.1-8b-instant"
+MODEL = "gpt-4o"
 JD_FILE = CONFIG_DIR / "job_descriptions.json"
 
 # ── Pydantic models for LLM response validation ───────────────────────────────
@@ -312,6 +312,169 @@ _CRITERIA = {
             ),
         },
     ],
+
+    "occupational therapist": [
+        {
+            "key": "ot_license",
+            "max": 20,
+            "instruction": (
+                "Award 20 if resume explicitly states OTR/L (Occupational Therapist Registered/Licensed) "
+                "or active OT license in Illinois. "
+                "Award 14 if OT license is mentioned but state is unclear or inactive. "
+                "Award 8 if COTA (Certified OT Assistant) license. "
+                "Award 0 if no OT licensure mentioned. Quote the exact licensure line."
+            ),
+        },
+        {
+            "key": "education",
+            "max": 10,
+            "instruction": (
+                "Award 10 if Master's degree in Occupational Therapy (MOT, MSOT, OTD). "
+                "Award 7 if Bachelor's in OT. Award 4 if Associate's or OTA program. "
+                "Award 0 if no OT degree mentioned. Quote the exact degree line."
+            ),
+        },
+        {
+            "key": "ot_experience",
+            "max": 15,
+            "instruction": (
+                "Award 15 if 2+ years OT experience in home health, pediatrics, or school settings. "
+                "Award 10 if 2+ years OT experience in any clinical setting. "
+                "Award 5 if less than 2 years OT experience. "
+                "Award 0 if no OT clinical experience. Quote the exact role and employer."
+            ),
+        },
+        {
+            "key": "pediatrics_school",
+            "max": 10,
+            "instruction": (
+                "Award 10 if resume shows direct experience with pediatric patients or school-based OT. "
+                "Award 5 if experience with adults only in rehabilitation or acute care. "
+                "Award 0 if no clinical caseload mentioned. Quote the exact setting or population."
+            ),
+        },
+        {
+            "key": "evaluation_treatment",
+            "max": 8,
+            "instruction": (
+                "Award 8 if resume explicitly mentions conducting OT evaluations, writing treatment plans, "
+                "or goal-setting for functional improvement. "
+                "Award 4 if general therapy skills mentioned without specifics. "
+                "Award 0 if not mentioned. Quote exactly."
+            ),
+        },
+        {
+            "key": "il_location",
+            "max": 5,
+            "instruction": (
+                "Award 5 if candidate is currently in Illinois — any IL city or zip code counts. "
+                "Award 3 if willing to relocate to IL. "
+                "Award 0 otherwise. Quote the location text."
+            ),
+        },
+    ],
+
+    "speech language pathologist": [
+        {
+            "key": "slp_license",
+            "max": 20,
+            "instruction": (
+                "Award 20 if resume states CCC-SLP (ASHA Certificate of Clinical Competence) "
+                "or licensed SLP in Illinois. "
+                "Award 14 if SLP license mentioned but state or CCC status unclear. "
+                "Award 8 if CF-SLP (Clinical Fellowship) or CFY status. "
+                "Award 0 if no SLP licensure or certification mentioned. Quote exactly."
+            ),
+        },
+        {
+            "key": "education",
+            "max": 10,
+            "instruction": (
+                "Award 10 if Master's degree in Speech-Language Pathology (MS-SLP, MA-SLP, or equivalent). "
+                "Award 6 if Bachelor's in Communication Sciences or related. "
+                "Award 0 if no relevant degree. Quote the exact degree line."
+            ),
+        },
+        {
+            "key": "slp_experience",
+            "max": 15,
+            "instruction": (
+                "Award 15 if 2+ years SLP experience in home health, medical, or school setting. "
+                "Award 10 if 2+ years SLP experience in any clinical setting. "
+                "Award 5 if CFY or less than 2 years SLP experience. "
+                "Award 0 if no SLP clinical experience. Quote the role and setting."
+            ),
+        },
+        {
+            "key": "specialty_skills",
+            "max": 10,
+            "instruction": (
+                "Award 10 if resume shows experience with dysphagia, AAC, aphasia, or pediatric speech disorders. "
+                "Award 5 if general SLP clinical skills mentioned without specialization. "
+                "Award 0 if no clinical skills mentioned. Quote exactly."
+            ),
+        },
+        {
+            "key": "il_location",
+            "max": 5,
+            "instruction": (
+                "Award 5 if candidate is currently in Illinois — any IL city or zip code counts. "
+                "Award 3 if willing to relocate to IL. "
+                "Award 0 otherwise. Quote the location text."
+            ),
+        },
+    ],
+
+    "physician": [
+        {
+            "key": "md_do_license",
+            "max": 20,
+            "instruction": (
+                "Award 20 if resume states active MD or DO license in Illinois. "
+                "Award 14 if MD/DO license mentioned but state unclear. "
+                "Award 8 if medical resident or fellow. "
+                "Award 0 if no medical license mentioned. Quote exactly."
+            ),
+        },
+        {
+            "key": "education",
+            "max": 10,
+            "instruction": (
+                "Award 10 if MD or DO degree from accredited medical school. "
+                "Award 5 if currently in residency or fellowship. "
+                "Award 0 if no medical degree. Quote the exact degree."
+            ),
+        },
+        {
+            "key": "clinical_experience",
+            "max": 15,
+            "instruction": (
+                "Award 15 if 2+ years post-residency clinical experience. "
+                "Award 10 if residency completed with relevant specialty. "
+                "Award 5 if currently in residency. "
+                "Award 0 if no clinical experience. Quote the role and duration."
+            ),
+        },
+        {
+            "key": "specialty_fit",
+            "max": 10,
+            "instruction": (
+                "Award 10 if specialty is ENT, Otolaryngology, Pulmonology, Neurology, Physiatry, "
+                "or any specialty relevant to swallowing/speech disorders. "
+                "Award 5 if internal medicine or general practice. "
+                "Award 0 if unrelated specialty. Quote the specialty."
+            ),
+        },
+        {
+            "key": "il_location",
+            "max": 5,
+            "instruction": (
+                "Award 5 if candidate is currently in Illinois. "
+                "Award 3 if willing to relocate to IL. "
+                "Award 0 otherwise. Quote the location."
+            ),
+        },
+    ],
 }
 
 # Fallback for any job title not in the above dict
@@ -320,10 +483,35 @@ _CRITERIA["default"] = _CRITERIA["administrator"]
 
 def _match_criteria(job_title: str) -> list:
     title_lower = job_title.lower()
+    title_norm  = title_lower.replace("-", " ")
     for key in _CRITERIA:
-        if key in title_lower:
+        if key in title_norm:
             return _CRITERIA[key]
     return _CRITERIA["default"]
+
+
+def _load_criteria(job_title: str) -> list:
+    """Check generated_criteria.json first; fall back to hardcoded."""
+    try:
+        crit_file = JD_FILE.parent / "generated_criteria.json"
+        if crit_file.exists():
+            all_c     = json.loads(crit_file.read_text(encoding="utf-8"))
+            role_key  = job_title.lower().strip()
+            # exact match first, then substring
+            entry = all_c.get(role_key)
+            if not entry:
+                for key in all_c:
+                    if key in role_key or role_key in key:
+                        entry = all_c[key]
+                        break
+            if entry:
+                crits = entry.get("criteria", [])
+                if crits:
+                    log.info(f"  [criteria] using generated rubric for '{job_title}' ({len(crits)} criteria)")
+                    return crits
+    except Exception as e:
+        log.warning(f"  [criteria] could not load generated criteria: {e}")
+    return _match_criteria(job_title)
 
 
 def _clean_jd(raw_jd: str) -> str:
@@ -362,7 +550,7 @@ def _build_prompt(job_title: str, jd_clean: str, resume_text: str,
 JOB: {job_title} (Lombard/Chicago IL)
 
 RESUME:
-{resume_text[:3500]}
+{resume_text}
 
 SCORING RULES (read resume carefully for each):
 {scoring_rules}
@@ -486,12 +674,8 @@ def process_one(path: Path, client, lock: threading.Lock = None) -> bool:
     job_title    = data.get("job_title", "")
     job_id       = data.get("job_id", "")
     requirements = data.get("requirements", [])
-    criteria     = _match_criteria(job_title)
+    criteria     = _load_criteria(job_title)
     jd_clean     = _load_jd(job_id)
-
-    if not jd_clean:
-        log.warning(f"  score skip (no JD): {data.get('full_name')}")
-        return False
 
     # Build profile text: resume PDF first, fall back to scraped profile fields
     profile_text = (data.get("resume_text") or "").strip()
@@ -507,17 +691,18 @@ def process_one(path: Path, client, lock: threading.Lock = None) -> bool:
 
     result: Optional[ScoreResponse] = None
 
-    if profile_text:
-        profile_text = profile_text[:5000]
+    if profile_text and jd_clean:
         prompt = _build_prompt(job_title, jd_clean, profile_text, criteria)
         try:
             result = _call(client, prompt)
         except (json.JSONDecodeError, ValidationError) as e:
             log.warning(f"  score parse error [{data.get('full_name')}]: {e}")
         except Exception as e:
-            log.warning(f"  score Groq error [{data.get('full_name')}]: {e}")
-    else:
+            log.warning(f"  score API error [{data.get('full_name')}]: {e}")
+    elif not profile_text:
         log.info(f"  [score] no text for {data.get('full_name')} — scoring from requirements only")
+    else:
+        log.info(f"  [score] no JD for {data.get('full_name')} — scoring from requirements only")
 
     breakdown = _compute_scores(result, requirements, criteria)
 
@@ -561,18 +746,18 @@ def main():
     args = parser.parse_args()
 
     creds = load_credentials()
-    groq_key = creds.get("groq_api_key")
-    if not groq_key:
-        log.error("groq_api_key missing from config/credentials.json")
+    openai_key = creds.get("openai_api_key")
+    if not openai_key:
+        log.error("openai_api_key missing from credentials / .env")
         sys.exit(1)
 
     try:
-        from groq import Groq
+        from openai import OpenAI
     except ImportError:
-        log.error("groq not installed — run: pip install groq")
+        log.error("openai not installed — run: pip install openai")
         sys.exit(1)
 
-    client = Groq(api_key=groq_key)
+    client = OpenAI(api_key=openai_key)
     all_paths = sorted(CANDIDATES_DIR.glob("*.json"))
 
     if not all_paths:
