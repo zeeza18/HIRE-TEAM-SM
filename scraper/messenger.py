@@ -333,9 +333,33 @@ def _compose_and_send(page: Page, message: str) -> bool:
         return False
 
     ta = page.get_by_test_id("indeed-messaging--compose-message-textarea")
-    ta.click()
-    ta.press("Control+A")
-    ta.fill(message)
+    try:
+        ta.scroll_into_view_if_needed(timeout=3_000)
+    except Exception:
+        pass
+    try:
+        ta.click(timeout=5_000, force=True)
+    except Exception as e:
+        log.warning(f"textarea click failed (continuing): {e}")
+    page.evaluate("""
+        const ta = document.querySelector('[data-testid="indeed-messaging--compose-message-textarea"]');
+        if (ta) { ta.focus(); }
+    """)
+    _pause(0.2, 0.3)
+    page.evaluate(
+        """(msg) => {
+            const ta = document.querySelector(
+                '[data-testid="indeed-messaging--compose-message-textarea"]'
+            );
+            const setter = Object.getOwnPropertyDescriptor(
+                window.HTMLTextAreaElement.prototype, 'value'
+            ).set;
+            setter.call(ta, msg);
+            ta.dispatchEvent(new Event('input',  {bubbles: true}));
+            ta.dispatchEvent(new Event('change', {bubbles: true}));
+        }""",
+        message,
+    )
     _pause(0.5, 0.9)
 
     # Primary: ComposeBox send button (from codegen)
@@ -354,7 +378,7 @@ def _compose_and_send(page: Page, message: str) -> bool:
 
 # ── rejection via ApplicantSentiment-no ──────────────────────────────────────
 
-def _reject_on_profile(page: Page, profile_url: str) -> bool:
+def _reject_on_profile(page: Page, profile_url: str, full_name: str = "") -> bool:
     """Navigate to the candidate profile and click the thumbs-down reject button."""
     page.goto(profile_url, wait_until="domcontentloaded", timeout=30_000)
     _pause(1.5, 2.5)
@@ -366,7 +390,27 @@ def _reject_on_profile(page: Page, profile_url: str) -> bool:
         log.error("ApplicantSentiment-no not found on profile page")
         return False
 
-    page.get_by_test_id("ApplicantSentiment-no").click()
+    # Scope to specific candidate via aria-label to avoid strict-mode violation
+    # (list pages show one reject button per visible row)
+    if full_name:
+        btn = page.get_by_role("button", name=f"Reject {full_name}", exact=True)
+        if btn.count() > 0:
+            btn.first.click()
+            _pause(1.0, 1.5)
+            log.info(f"Clicked reject for {full_name}")
+            return True
+        # Try partial match (name may differ slightly)
+        first = full_name.split()[0] if full_name else ""
+        if first:
+            btn = page.get_by_role("button", name=re.compile(rf"Reject {re.escape(first)}", re.I))
+            if btn.count() > 0:
+                btn.first.click()
+                _pause(1.0, 1.5)
+                log.info(f"Clicked reject (partial match) for {full_name}")
+                return True
+
+    # Fallback: use .first to avoid strict-mode error
+    page.get_by_test_id("ApplicantSentiment-no").first.click()
     _pause(1.0, 1.5)
     log.info("Clicked ApplicantSentiment-no (rejected on Indeed)")
     return True
@@ -412,7 +456,7 @@ def send_message(candidate_id: str, message: str, new_status: str = "contacting"
 
             # For rejections: click ApplicantSentiment-no on the profile page
             if new_status == "rejected" and profile_url:
-                if not _reject_on_profile(page, profile_url):
+                if not _reject_on_profile(page, profile_url, full_name=full_name):
                     browser.close()
                     return {"ok": False, "error": "Could not click reject button on Indeed profile"}
                 browser.close()
